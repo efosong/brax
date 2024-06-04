@@ -21,20 +21,20 @@ from absl import flags
 from brax.v1.io import file
 from trimesh.exchange.load import load_mesh
 
-_PATH = flags.DEFINE_string('path', None, 'Path to mesh file.')
+_PATH = flags.DEFINE_string("path", None, "Path to mesh file.")
 
 
 def main(argv: Sequence[str]) -> None:
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-  with file.File(_PATH.value, 'rb') as f:
-    mesh = load_mesh(f, file_type=_PATH.value)
-  if not mesh.is_watertight:
-    raise AssertionError('Mesh must be watertight.')
-  print(
-      f'{{ x: {mesh.center_mass[0]} y: {mesh.center_mass[1]}  z: {mesh.center_mass[2]} }}'
-  )
+    if len(argv) > 1:
+        raise app.UsageError("Too many command-line arguments.")
+    with file.File(_PATH.value, "rb") as f:
+        mesh = load_mesh(f, file_type=_PATH.value)
+    if not mesh.is_watertight:
+        raise AssertionError("Mesh must be watertight.")
+    print(
+        f"{{ x: {mesh.center_mass[0]} y: {mesh.center_mass[1]}  z: {mesh.center_mass[2]} }}"
+    )
 
 
-if __name__ == '__main__':
-  app.run(main)
+if __name__ == "__main__":
+    app.run(main)

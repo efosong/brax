@@ -13,16 +13,16 @@
 # limitations under the License.
 
 """Example: a Component."""
-AUTHORS = ('Shixiang Shane Gu',)
-CONTACTS = ('shanegu@google.com',)
-AFFILIATIONS = ('google.com',)
-DESCRIPTIONS = ('ant with four legs',)
+AUTHORS = ("Shixiang Shane Gu",)
+CONTACTS = ("shanegu@google.com",)
+AFFILIATIONS = ("google.com",)
+DESCRIPTIONS = ("ant with four legs",)
 
 ENVS = {}
 
 COMPONENTS = dict(
     ant=dict(
-        module='ant',
-        tracks=('race', 'race_ma', 'sumo', 'onigokko_predator',
-                'onigokko_prey'),
-    ),)
+        module="ant",
+        tracks=("race", "race_ma", "sumo", "onigokko_predator", "onigokko_prey"),
+    ),
+)

@@ -24,23 +24,24 @@ from jax import numpy as jp
 
 @struct.dataclass
 class State(base.State):
-  """Dynamic state that changes after every step.
+    """Dynamic state that changes after every step.
 
-  Attributes:
-    x_i: (num_links,) link center of mass position in world frame
-    xd_i: (num_links,) link center of mass velocity in world frame
-    j: link position in joint frame
-    jd: link motion in joint frame
-    a_p: joint parent anchor in world frame
-    a_c: joint child anchor in world frame
-    i_inv: link inverse inertia
-    mass: link mass
-  """
-  x_i: Transform
-  xd_i: Motion
-  j: Transform
-  jd: Motion
-  a_p: Transform
-  a_c: Transform
-  i_inv: jax.Array
-  mass: jax.Array
+    Attributes:
+      x_i: (num_links,) link center of mass position in world frame
+      xd_i: (num_links,) link center of mass velocity in world frame
+      j: link position in joint frame
+      jd: link motion in joint frame
+      a_p: joint parent anchor in world frame
+      a_c: joint child anchor in world frame
+      i_inv: link inverse inertia
+      mass: link mass
+    """
+
+    x_i: Transform
+    xd_i: Motion
+    j: Transform
+    jd: Motion
+    a_p: Transform
+    a_c: Transform
+    i_inv: jax.Array
+    mass: jax.Array

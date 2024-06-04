@@ -27,28 +27,29 @@ ARSNetwork = networks.FeedForwardNetwork
 def make_policy_network(
     observation_size: int,
     action_size: int,
-    preprocess_observations_fn: types.PreprocessObservationFn = types
-    .identity_observation_preprocessor,
+    preprocess_observations_fn: types.PreprocessObservationFn = types.identity_observation_preprocessor,
 ) -> ARSNetwork:
-  """Creates a policy network."""
+    """Creates a policy network."""
 
-  def apply(processor_params, policy_params, obs):
-    obs = preprocess_observations_fn(obs, processor_params)
-    return jnp.matmul(obs, policy_params)
+    def apply(processor_params, policy_params, obs):
+        obs = preprocess_observations_fn(obs, processor_params)
+        return jnp.matmul(obs, policy_params)
 
-  return ARSNetwork(
-      init=lambda _: jnp.zeros((observation_size, action_size)), apply=apply)
+    return ARSNetwork(
+        init=lambda _: jnp.zeros((observation_size, action_size)), apply=apply
+    )
 
 
 def make_inference_fn(policy_network: ARSNetwork):
-  """Creates params and inference function for the ARS agent."""
+    """Creates params and inference function for the ARS agent."""
 
-  def make_policy(params: types.PolicyParams) -> types.Policy:
+    def make_policy(params: types.PolicyParams) -> types.Policy:
 
-    def policy(observations: types.Observation,
-               unused_key_sample: PRNGKey) -> Tuple[types.Action, types.Extra]:
-      return policy_network.apply(*params, observations), {}
+        def policy(
+            observations: types.Observation, unused_key_sample: PRNGKey
+        ) -> Tuple[types.Action, types.Extra]:
+            return policy_network.apply(*params, observations), {}
 
-    return policy
+        return policy
 
-  return make_policy
+    return make_policy

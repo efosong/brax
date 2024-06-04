@@ -25,92 +25,93 @@ from brax.v1.envs import env
 
 
 class ReacherAngle(env.Env):
-  """Trains a reacher arm to touch a random target via angle actuators."""
+    """Trains a reacher arm to touch a random target via angle actuators."""
 
-  def __init__(self, legacy_spring=False, **kwargs):
-    config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
-    super().__init__(config=config, **kwargs)
-    self.target_idx = self.sys.body.index['target']
-    self.arm_idx = self.sys.body.index['body1']
+    def __init__(self, legacy_spring=False, **kwargs):
+        config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
+        super().__init__(config=config, **kwargs)
+        self.target_idx = self.sys.body.index["target"]
+        self.arm_idx = self.sys.body.index["body1"]
 
-    # map the [-1, 1] action space into a valid angle for the actuators
-    limits = []
-    for j in self.sys.config.joints:
-      for l in j.angle_limit:
-        limits.append((l.min, l.max))
-    self._min_act = jp.array([l[0] for l in limits])
-    self._range_act = jp.array([l[1] - l[0] for l in limits])
+        # map the [-1, 1] action space into a valid angle for the actuators
+        limits = []
+        for j in self.sys.config.joints:
+            for l in j.angle_limit:
+                limits.append((l.min, l.max))
+        self._min_act = jp.array([l[0] for l in limits])
+        self._range_act = jp.array([l[1] - l[0] for l in limits])
 
-  def reset(self, rng: jp.ndarray) -> env.State:
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    qpos = self.sys.default_angle() + jp.random_uniform(
-        rng1, (self.sys.num_joint_dof,), -.1, .1)
-    qvel = jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.005, .005)
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    rng, target = self._random_target(rng)
-    pos = jp.index_update(qp.pos, self.target_idx, target)
-    qp = qp.replace(pos=pos)
-    info = self.sys.info(qp)
-    obs = self._get_obs(qp, info)
-    reward, done, zero = jp.zeros(3)
-    metrics = {
-        'rewardDist': zero,
-        'rewardCtrl': zero,
-    }
-    return env.State(qp, obs, reward, done, metrics)
+    def reset(self, rng: jp.ndarray) -> env.State:
+        rng, rng1, rng2 = jp.random_split(rng, 3)
+        qpos = self.sys.default_angle() + jp.random_uniform(
+            rng1, (self.sys.num_joint_dof,), -0.1, 0.1
+        )
+        qvel = jp.random_uniform(rng2, (self.sys.num_joint_dof,), -0.005, 0.005)
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        rng, target = self._random_target(rng)
+        pos = jp.index_update(qp.pos, self.target_idx, target)
+        qp = qp.replace(pos=pos)
+        info = self.sys.info(qp)
+        obs = self._get_obs(qp, info)
+        reward, done, zero = jp.zeros(3)
+        metrics = {
+            "rewardDist": zero,
+            "rewardCtrl": zero,
+        }
+        return env.State(qp, obs, reward, done, metrics)
 
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
-    action = self._min_act + self._range_act * ((action + 1) / 2.)
+    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+        action = self._min_act + self._range_act * ((action + 1) / 2.0)
 
-    qp, info = self.sys.step(state.qp, action)
-    obs = self._get_obs(qp, info)
+        qp, info = self.sys.step(state.qp, action)
+        obs = self._get_obs(qp, info)
 
-    # vector from tip to target is last 3 entries of obs vector
-    reward_dist = -jp.norm(obs[-3:])
+        # vector from tip to target is last 3 entries of obs vector
+        reward_dist = -jp.norm(obs[-3:])
 
-    reward = reward_dist
+        reward = reward_dist
 
-    metrics = {
-        'rewardDist': reward_dist,
-        'rewardCtrl': 0.,
-    }
+        metrics = {
+            "rewardDist": reward_dist,
+            "rewardCtrl": 0.0,
+        }
 
-    return state.replace(qp=qp, obs=obs, reward=reward, metrics=metrics)
+        return state.replace(qp=qp, obs=obs, reward=reward, metrics=metrics)
 
-  def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
-    """Egocentric observation of target and arm body."""
+    def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
+        """Egocentric observation of target and arm body."""
 
-    # some pre-processing to pull joint angles and velocities
-    joint_angle, _ = self.sys.joints[0].angle_vel(qp)
+        # some pre-processing to pull joint angles and velocities
+        joint_angle, _ = self.sys.joints[0].angle_vel(qp)
 
-    # qpos:
-    # x,y coord of target
-    qpos = [qp.pos[self.target_idx, :2]]
+        # qpos:
+        # x,y coord of target
+        qpos = [qp.pos[self.target_idx, :2]]
 
-    # dist to target and speed of tip
-    arm_qps = jp.take(qp, jp.array(self.arm_idx))
-    tip_pos, tip_vel = arm_qps.to_world(jp.array([0.11, 0., 0.]))
-    tip_to_target = [tip_pos - qp.pos[self.target_idx]]
-    cos_sin_angle = [jp.cos(joint_angle), jp.sin(joint_angle)]
+        # dist to target and speed of tip
+        arm_qps = jp.take(qp, jp.array(self.arm_idx))
+        tip_pos, tip_vel = arm_qps.to_world(jp.array([0.11, 0.0, 0.0]))
+        tip_to_target = [tip_pos - qp.pos[self.target_idx]]
+        cos_sin_angle = [jp.cos(joint_angle), jp.sin(joint_angle)]
 
-    # qvel:
-    # velocity of tip
-    qvel = [tip_vel[:2]]
+        # qvel:
+        # velocity of tip
+        qvel = [tip_vel[:2]]
 
-    return jp.concatenate(cos_sin_angle + qpos + qvel + tip_to_target)
+        return jp.concatenate(cos_sin_angle + qpos + qvel + tip_to_target)
 
-  def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
-    """Returns a target location in a random circle slightly above xy plane."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    # we perform a sqrt here so that the final distribution of sampled targets
-    # is uniformly random in 2D
-    dist = .2 * jp.sqrt(jp.random_uniform(rng1))
-    ang = jp.pi * 2. * jp.random_uniform(rng2)
-    target_x = dist * jp.cos(ang)
-    target_y = dist * jp.sin(ang)
-    target_z = .01
-    target = jp.array([target_x, target_y, target_z]).transpose()
-    return rng, target
+    def _random_target(self, rng: jp.ndarray) -> Tuple[jp.ndarray, jp.ndarray]:
+        """Returns a target location in a random circle slightly above xy plane."""
+        rng, rng1, rng2 = jp.random_split(rng, 3)
+        # we perform a sqrt here so that the final distribution of sampled targets
+        # is uniformly random in 2D
+        dist = 0.2 * jp.sqrt(jp.random_uniform(rng1))
+        ang = jp.pi * 2.0 * jp.random_uniform(rng2)
+        target_x = dist * jp.cos(ang)
+        target_y = dist * jp.sin(ang)
+        target_z = 0.01
+        target = jp.array([target_x, target_y, target_z]).transpose()
+        return rng, target
 
 
 _SYSTEM_CONFIG = """

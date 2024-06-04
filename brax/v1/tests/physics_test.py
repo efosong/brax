@@ -29,28 +29,31 @@ from google.protobuf import text_format
 
 class BodyTest(absltest.TestCase):
 
-  def test_projectile_motion(self):
-    """A ball with an initial velocity curves down due to gravity."""
-    sys = brax.System(
-        text_format.Parse(
-            """
+    def test_projectile_motion(self):
+        """A ball with an initial velocity curves down due to gravity."""
+        sys = brax.System(
+            text_format.Parse(
+                """
     dt: 1 substeps: 1000
     gravity { z: -9.8 }
     bodies { name: "Ball" mass: 1 }
     defaults { qps { name: "Ball" vel {x: 1}}}
-    """, brax.Config()))
-    qp = sys.default_qp()
-    qp, _ = sys.step(qp, jp.array([]))
-    # v = v_0 + a * t
-    self.assertAlmostEqual(qp.vel[0, 2], -9.8, 2)
-    # x = x_0 + v_0 * t + 0.5 * a * t^2
-    self.assertAlmostEqual(qp.pos[0, 0], 1, 2)
-    self.assertAlmostEqual(qp.pos[0, 2], -9.8 / 2, 2)
+    """,
+                brax.Config(),
+            )
+        )
+        qp = sys.default_qp()
+        qp, _ = sys.step(qp, jp.array([]))
+        # v = v_0 + a * t
+        self.assertAlmostEqual(qp.vel[0, 2], -9.8, 2)
+        # x = x_0 + v_0 * t + 0.5 * a * t^2
+        self.assertAlmostEqual(qp.pos[0, 0], 1, 2)
+        self.assertAlmostEqual(qp.pos[0, 2], -9.8 / 2, 2)
 
 
 class BoxTest(absltest.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 1.5 substeps: 2000 friction: 0.77459666924
     gravity { z: -9.8 }
     bodies {
@@ -64,26 +67,26 @@ class BoxTest(absltest.TestCase):
     defaults { qps { name: "box" pos { z: 2 } vel {x: 2}}}
   """
 
-  def test_box_hits_ground(self):
-    """A box falls onto the ground and stjp."""
-    sys = brax.System(text_format.Parse(BoxTest._CONFIG, brax.Config()))
-    qp = sys.default_qp(0)
-    qp, _ = sys.step(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)
+    def test_box_hits_ground(self):
+        """A box falls onto the ground and stjp."""
+        sys = brax.System(text_format.Parse(BoxTest._CONFIG, brax.Config()))
+        qp = sys.default_qp(0)
+        qp, _ = sys.step(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)
 
-  def test_box_slide(self):
-    """A box slides across the ground and comes to a stop."""
-    sys = brax.System(text_format.Parse(BoxTest._CONFIG, brax.Config()))
-    qp = sys.default_qp(1)
-    qp, _ = sys.step(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)
-    self.assertGreater(qp.pos[0, 0], 1)  # after sliding for a bit...
-    self.assertAlmostEqual(qp.vel[0, 0], 0, 2)  # friction brings it to a stop
-    self.assertLess(qp.pos[0, 0], 1.5)  # ... and keeps it from travelling 2m
+    def test_box_slide(self):
+        """A box slides across the ground and comes to a stop."""
+        sys = brax.System(text_format.Parse(BoxTest._CONFIG, brax.Config()))
+        qp = sys.default_qp(1)
+        qp, _ = sys.step(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)
+        self.assertGreater(qp.pos[0, 0], 1)  # after sliding for a bit...
+        self.assertAlmostEqual(qp.vel[0, 0], 0, 2)  # friction brings it to a stop
+        self.assertLess(qp.pos[0, 0], 1.5)  # ... and keeps it from travelling 2m
 
 
 class BoxBoxTest(absltest.TestCase):
-  _CONFIG = """
+    _CONFIG = """
     dt: 0.5 substeps: 200 friction: 0.8 elasticity: 0.5
     gravity { z: -9.8 }
     bodies {
@@ -103,21 +106,21 @@ class BoxBoxTest(absltest.TestCase):
     }
   """
 
-  def test_box_box(self):
-    """A box falls onto another box."""
-    sys = brax.System(text_format.Parse(BoxBoxTest._CONFIG, brax.Config()))
-    qp = sys.default_qp()
-    qp, _ = sys.step(qp, jp.array([]))
-    # Boxes are stacked.
-    self.assertAlmostEqual(qp.pos[0, 2], 0.2, 2)
-    self.assertAlmostEqual(qp.pos[1, 2], 0.5, 2)
-    # x-y position of the top box is unchanged.
-    self.assertAlmostEqual(qp.pos[1, 0], 0.1, 2)
-    self.assertAlmostEqual(qp.pos[1, 1], 1.0, 2)
+    def test_box_box(self):
+        """A box falls onto another box."""
+        sys = brax.System(text_format.Parse(BoxBoxTest._CONFIG, brax.Config()))
+        qp = sys.default_qp()
+        qp, _ = sys.step(qp, jp.array([]))
+        # Boxes are stacked.
+        self.assertAlmostEqual(qp.pos[0, 2], 0.2, 2)
+        self.assertAlmostEqual(qp.pos[1, 2], 0.5, 2)
+        # x-y position of the top box is unchanged.
+        self.assertAlmostEqual(qp.pos[1, 0], 0.1, 2)
+        self.assertAlmostEqual(qp.pos[1, 1], 1.0, 2)
 
 
 class CollisionDebuggerTest(absltest.TestCase):
-  _CONFIG = """
+    _CONFIG = """
     dt: 0.01 substeps: 4 friction: 1
     gravity { z: -9.8 }
     bodies {
@@ -129,18 +132,19 @@ class CollisionDebuggerTest(absltest.TestCase):
     defaults { qps { name: "box" pos { z: 0.49 }}}
   """
 
-  def test_system_runs_with_debug_on(self):
-    """Tests that the simulation runs with debug_contacts."""
-    sys = brax.System(
-        text_format.Parse(CollisionDebuggerTest._CONFIG, brax.Config()))
-    qp = sys.default_qp(0)
-    qp, info = sys.step(qp, jp.array([]))
-    self.assertGreater(info.contact_pos.shape[0], 0)
+    def test_system_runs_with_debug_on(self):
+        """Tests that the simulation runs with debug_contacts."""
+        sys = brax.System(
+            text_format.Parse(CollisionDebuggerTest._CONFIG, brax.Config())
+        )
+        qp = sys.default_qp(0)
+        qp, info = sys.step(qp, jp.array([]))
+        self.assertGreater(info.contact_pos.shape[0], 0)
 
 
 class BoxCapsuleTest(absltest.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 0.05 substeps: 30 friction: 1
     gravity { z: -9.8 }
     bodies {
@@ -204,30 +208,30 @@ class BoxCapsuleTest(absltest.TestCase):
     solver_scale_collide: .3
   """
 
-  def test_box_hits_capsule(self):
-    """A box falls onto a capsule and stays above it."""
-    sys = brax.System(text_format.Parse(BoxCapsuleTest._CONFIG, brax.Config()))
-    qp = sys.default_qp()
-    self.assertAlmostEqual(qp.pos[0, 2], 3.5, 2)
-    self.assertAlmostEqual(qp.pos[2, 2], 3.5, 2)
+    def test_box_hits_capsule(self):
+        """A box falls onto a capsule and stays above it."""
+        sys = brax.System(text_format.Parse(BoxCapsuleTest._CONFIG, brax.Config()))
+        qp = sys.default_qp()
+        self.assertAlmostEqual(qp.pos[0, 2], 3.5, 2)
+        self.assertAlmostEqual(qp.pos[2, 2], 3.5, 2)
 
-    step_fn = jax.jit(sys.step)
-    for _ in range(30):
-      qp, _ = step_fn(qp, jp.array([]))
-    # Box should be on the capsule, rather than on the ground, for both masses
-    # box falls on capsule
-    self.assertAlmostEqual(qp.pos[0, 2], 2.5, 2)
-    self.assertAlmostEqual(qp.pos[1, 2], 1.0, 2)
-    # box falls on capsule with non-unit mass ratio, bounces a bit
-    self.assertGreaterEqual(qp.pos[2, 2], 2.5, 2)
-    self.assertAlmostEqual(qp.pos[3, 2], 1.0, 2)
-    # capsule falls on frozen box
-    self.assertAlmostEqual(qp.pos[5, 2], 1.5, 2)
+        step_fn = jax.jit(sys.step)
+        for _ in range(30):
+            qp, _ = step_fn(qp, jp.array([]))
+        # Box should be on the capsule, rather than on the ground, for both masses
+        # box falls on capsule
+        self.assertAlmostEqual(qp.pos[0, 2], 2.5, 2)
+        self.assertAlmostEqual(qp.pos[1, 2], 1.0, 2)
+        # box falls on capsule with non-unit mass ratio, bounces a bit
+        self.assertGreaterEqual(qp.pos[2, 2], 2.5, 2)
+        self.assertAlmostEqual(qp.pos[3, 2], 1.0, 2)
+        # capsule falls on frozen box
+        self.assertAlmostEqual(qp.pos[5, 2], 1.5, 2)
 
 
 class HeightMapTest(absltest.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 2 substeps: 1000 friction: 1 elasticity: 0
     gravity { z: -9.8 }
     bodies {
@@ -249,17 +253,17 @@ class HeightMapTest(absltest.TestCase):
     defaults { qps { name: "box" pos: {x: 1.5 y: -7.5 z: 4}}}
   """
 
-  def test_box_stays_on_heightmap(self):
-    """A box falls onto the bottom left of the height map."""
-    sys = brax.System(text_format.Parse(HeightMapTest._CONFIG, brax.Config()))
-    qp = sys.default_qp()
-    qp, _ = jax.jit(sys.step)(qp, jp.array([]))
-    self.assertGreater(qp.pos[0, 2], 2.0)
+    def test_box_stays_on_heightmap(self):
+        """A box falls onto the bottom left of the height map."""
+        sys = brax.System(text_format.Parse(HeightMapTest._CONFIG, brax.Config()))
+        qp = sys.default_qp()
+        qp, _ = jax.jit(sys.step)(qp, jp.array([]))
+        self.assertGreater(qp.pos[0, 2], 2.0)
 
 
 class SphereTest(absltest.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 5 substeps: 500 friction: 0.6
     gravity { z: -9.8 }
     bodies {
@@ -272,24 +276,24 @@ class SphereTest(absltest.TestCase):
     defaults {qps { name: "Sphere1" pos {z: 1} vel {x: 2}}}
   """
 
-  def test_sphere_hits_ground(self):
-    """A sphere falls onto the ground and stops."""
-    sys = brax.System(text_format.Parse(SphereTest._CONFIG, brax.Config()))
-    qp = sys.default_qp(0)
-    qp, _ = sys.step(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[0, 2], 0.25, 2)
+    def test_sphere_hits_ground(self):
+        """A sphere falls onto the ground and stops."""
+        sys = brax.System(text_format.Parse(SphereTest._CONFIG, brax.Config()))
+        qp = sys.default_qp(0)
+        qp, _ = sys.step(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[0, 2], 0.25, 2)
 
-  def test_sphere_roll(self):
-    """A sphere rolls across the ground."""
-    sys = brax.System(text_format.Parse(SphereTest._CONFIG, brax.Config()))
-    qp = sys.default_qp(1)
-    qp, _ = sys.step(qp, jp.array([]))
-    self.assertGreater(qp.ang[0, 1], 0.25)  # sphere is rolling
+    def test_sphere_roll(self):
+        """A sphere rolls across the ground."""
+        sys = brax.System(text_format.Parse(SphereTest._CONFIG, brax.Config()))
+        qp = sys.default_qp(1)
+        qp, _ = sys.step(qp, jp.array([]))
+        self.assertGreater(qp.ang[0, 1], 0.25)  # sphere is rolling
 
 
 class CapsuleTest(absltest.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 20.0 substeps: 10000 friction: 0.6
     gravity { z: -9.8 }
     bodies {
@@ -327,43 +331,43 @@ class CapsuleTest(absltest.TestCase):
     }
   """
 
-  def test_capsule_hits_ground(self):
-    """A capsule falls onto the ground and stops."""
-    sys = brax.System(text_format.Parse(CapsuleTest._CONFIG, brax.Config()))
-    qp = sys.default_qp(0)
-    qp, _ = jax.jit(sys.step)(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)  # standing up and down
-    self.assertAlmostEqual(qp.pos[1, 2], 0.25, 2)  # lying on its side
-    self.assertAlmostEqual(qp.pos[2, 2], 0.25, 2)  # rolls to side from y rot
-    self.assertAlmostEqual(qp.pos[3, 2], 0.25, 2)  # rolls to side from x rot
+    def test_capsule_hits_ground(self):
+        """A capsule falls onto the ground and stops."""
+        sys = brax.System(text_format.Parse(CapsuleTest._CONFIG, brax.Config()))
+        qp = sys.default_qp(0)
+        qp, _ = jax.jit(sys.step)(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)  # standing up and down
+        self.assertAlmostEqual(qp.pos[1, 2], 0.25, 2)  # lying on its side
+        self.assertAlmostEqual(qp.pos[2, 2], 0.25, 2)  # rolls to side from y rot
+        self.assertAlmostEqual(qp.pos[3, 2], 0.25, 2)  # rolls to side from x rot
 
-  def test_capsule_hits_capsule(self):
-    """A capsule falls onto another capsule and balances on it."""
-    config = text_format.Parse(CapsuleTest._CONFIG, brax.Config())
-    config.dt = 2.0
-    config.substeps = 400
-    sys = brax.System(config, brax.Config())
-    qp = sys.default_qp(1)
-    qp, _ = jax.jit(sys.step)(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)  # standing up and down
-    self.assertAlmostEqual(qp.pos[1, 2], 1.25, 2)  # lying on Capsule1
+    def test_capsule_hits_capsule(self):
+        """A capsule falls onto another capsule and balances on it."""
+        config = text_format.Parse(CapsuleTest._CONFIG, brax.Config())
+        config.dt = 2.0
+        config.substeps = 400
+        sys = brax.System(config, brax.Config())
+        qp = sys.default_qp(1)
+        qp, _ = jax.jit(sys.step)(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)  # standing up and down
+        self.assertAlmostEqual(qp.pos[1, 2], 1.25, 2)  # lying on Capsule1
 
-  def test_cull(self):
-    """A capsule falls onto another capsule, with NN culling."""
-    config = text_format.Parse(CapsuleTest._CONFIG, brax.Config())
-    config.collider_cutoff = 1
-    config.dt = 2.0
-    config.substeps = 400
-    sys = brax.System(config)
-    qp = sys.default_qp(1)
-    qp, _ = jax.jit(sys.step)(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)  # standing up and down
-    self.assertAlmostEqual(qp.pos[1, 2], 1.25, 2)  # lying on Capsule1
+    def test_cull(self):
+        """A capsule falls onto another capsule, with NN culling."""
+        config = text_format.Parse(CapsuleTest._CONFIG, brax.Config())
+        config.collider_cutoff = 1
+        config.dt = 2.0
+        config.substeps = 400
+        sys = brax.System(config)
+        qp = sys.default_qp(1)
+        qp, _ = jax.jit(sys.step)(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[0, 2], 0.5, 2)  # standing up and down
+        self.assertAlmostEqual(qp.pos[1, 2], 1.25, 2)  # lying on Capsule1
 
 
 class MeshTest(absltest.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 0.05 substeps: 10 friction: 1.0
     gravity { z: -9.8 }
     bodies {
@@ -390,44 +394,45 @@ class MeshTest(absltest.TestCase):
     }
   """
 
-  def test_mesh_hits_ground(self):
-    """A mesh falls onto the ground."""
-    config = text_format.Parse(MeshTest._CONFIG, brax.Config())
-    resource_path = os.path.join(
-        absltest.get_default_test_srcdir(),
-        'brax/v1/tests/testdata')
-    sys = brax.System(config, [resource_path])
-    qp = sys.default_qp()
-    # Cylinder should be up in the air.
-    self.assertAlmostEqual(qp.pos[0, 2], 1.5, 2)
+    def test_mesh_hits_ground(self):
+        """A mesh falls onto the ground."""
+        config = text_format.Parse(MeshTest._CONFIG, brax.Config())
+        resource_path = os.path.join(
+            absltest.get_default_test_srcdir(), "brax/v1/tests/testdata"
+        )
+        sys = brax.System(config, [resource_path])
+        qp = sys.default_qp()
+        # Cylinder should be up in the air.
+        self.assertAlmostEqual(qp.pos[0, 2], 1.5, 2)
 
-    step_fn = jax.jit(sys.step)
-    for _ in range(30):
-      qp, _ = step_fn(qp, jp.array([]))
-    # Cylinder should be on the ground.
-    self.assertAlmostEqual(qp.pos[0, 2], 0, 2)
+        step_fn = jax.jit(sys.step)
+        for _ in range(30):
+            qp, _ = step_fn(qp, jp.array([]))
+        # Cylinder should be on the ground.
+        self.assertAlmostEqual(qp.pos[0, 2], 0, 2)
 
-  def test_mesh_hits_capsule(self):
-    config = text_format.Parse(MeshTest._CONFIG, brax.Config())
-    # Move the capsule under the cylinder.
-    config.defaults[0].qps[1].pos.x = 0
-    resource_path = os.path.join(
-        absltest.get_default_test_srcdir(),
-        'brax/v1/tests/testdata')
-    sys = brax.System(config, [resource_path])
-    qp = sys.default_qp()
-    self.assertAlmostEqual(qp.pos[0, 2], 1.5, 2)
+    def test_mesh_hits_capsule(self):
+        config = text_format.Parse(MeshTest._CONFIG, brax.Config())
+        # Move the capsule under the cylinder.
+        config.defaults[0].qps[1].pos.x = 0
+        resource_path = os.path.join(
+            absltest.get_default_test_srcdir(), "brax/v1/tests/testdata"
+        )
+        sys = brax.System(config, [resource_path])
+        qp = sys.default_qp()
+        self.assertAlmostEqual(qp.pos[0, 2], 1.5, 2)
 
-    step_fn = jax.jit(sys.step)
-    for _ in range(30):
-      qp, _ = step_fn(qp, jp.array([]))
-    # Cylinder should be on the capsule, rather than on the ground.
-    self.assertAlmostEqual(qp.pos[0, 2], 0.394, 2)
+        step_fn = jax.jit(sys.step)
+        for _ in range(30):
+            qp, _ = step_fn(qp, jp.array([]))
+        # Cylinder should be on the capsule, rather than on the ground.
+        self.assertAlmostEqual(qp.pos[0, 2], 0.394, 2)
 
 
 class CapsuleClippedPlaneTest(absltest.TestCase):
-  """Tests the capsule-clippedPlane collision function."""
-  _CONFIG = """
+    """Tests the capsule-clippedPlane collision function."""
+
+    _CONFIG = """
     dt: 2 substeps: 800 friction: 0.6
     gravity { z: -9.8 }
     bodies {
@@ -462,24 +467,24 @@ class CapsuleClippedPlaneTest(absltest.TestCase):
     }
   """
 
-  def test_collision(self):
-    """Tests collisions between spheres and a clipped plane."""
-    config = text_format.Parse(CapsuleClippedPlaneTest._CONFIG, brax.Config())
-    sys = brax.System(config)
+    def test_collision(self):
+        """Tests collisions between spheres and a clipped plane."""
+        config = text_format.Parse(CapsuleClippedPlaneTest._CONFIG, brax.Config())
+        sys = brax.System(config)
 
-    qp = sys.default_qp()
-    step_fn = jax.jit(sys.step)
-    qp, _ = step_fn(qp, jp.array([]))
-    # sphere1 is on the clipped plane and sphere2/sphere3 are on the ground
-    # plane
-    self.assertAlmostEqual(qp.pos[0, 2], 2.5, 4)
-    self.assertAlmostEqual(qp.pos[1, 2], 0.5, 4)
-    self.assertAlmostEqual(qp.pos[2, 2], 0.5, 4)
+        qp = sys.default_qp()
+        step_fn = jax.jit(sys.step)
+        qp, _ = step_fn(qp, jp.array([]))
+        # sphere1 is on the clipped plane and sphere2/sphere3 are on the ground
+        # plane
+        self.assertAlmostEqual(qp.pos[0, 2], 2.5, 4)
+        self.assertAlmostEqual(qp.pos[1, 2], 0.5, 4)
+        self.assertAlmostEqual(qp.pos[2, 2], 0.5, 4)
 
 
 class JointTest(parameterized.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     substeps: 4000
     dt: .01
     gravity { z: -9.8 }
@@ -496,111 +501,115 @@ class JointTest(parameterized.TestCase):
     solver_scale_pos: .2
   """
 
-  @parameterized.parameters((2.0, 0.125, 0.0625), (5.0, 0.125, 0.03125),
-                            (1.0, 0.0625, 0.1))
-  def test_pendulum_period(self, mass, radius, vel):
-    """A small spherical mass swings for approximately one period."""
-    config = text_format.Parse(JointTest._CONFIG, brax.Config())
+    @parameterized.parameters(
+        (2.0, 0.125, 0.0625), (5.0, 0.125, 0.03125), (1.0, 0.0625, 0.1)
+    )
+    def test_pendulum_period(self, mass, radius, vel):
+        """A small spherical mass swings for approximately one period."""
+        config = text_format.Parse(JointTest._CONFIG, brax.Config())
 
-    # this length of time comes from the following:
-    # inertia_about_anchor = mass * dist_to_anchor^2 + inertia_cm
-    # dist_to_anchor = 1.0
-    # inertia_cm = 2/5 * mass * radius^2 (solid sphere)
-    # T = 2 * pi * sqrt(inertia_about_anchor / (2 * mass * g * dist_to_anchor))
-    config.dt = 2 * jp.pi * jp.sqrt((.4 * radius**2 + 1.) / 9.8)
-    config.bodies[1].mass = mass
-    config.bodies[1].inertia.x = .4 * mass * radius**2
-    config.bodies[1].inertia.y = .4 * mass * radius**2
-    config.bodies[1].inertia.z = .4 * mass * radius**2
-    sys = brax.System(config)
+        # this length of time comes from the following:
+        # inertia_about_anchor = mass * dist_to_anchor^2 + inertia_cm
+        # dist_to_anchor = 1.0
+        # inertia_cm = 2/5 * mass * radius^2 (solid sphere)
+        # T = 2 * pi * sqrt(inertia_about_anchor / (2 * mass * g * dist_to_anchor))
+        config.dt = 2 * jp.pi * jp.sqrt((0.4 * radius**2 + 1.0) / 9.8)
+        config.bodies[1].mass = mass
+        config.bodies[1].inertia.x = 0.4 * mass * radius**2
+        config.bodies[1].inertia.y = 0.4 * mass * radius**2
+        config.bodies[1].inertia.z = 0.4 * mass * radius**2
+        sys = brax.System(config)
 
-    # initializing system to have a small initial velocity and ang velocity
-    # so that small angle approximation is valid
-    qp = brax.QP(
-        pos=jp.array([[0., 0., 0.], [0., 0., -1.]]),
-        rot=jp.array([[1., 0., 0., 0.], [1., 0., 0., 0.]]),
-        vel=jp.array([[0., 0., 0.], [0., vel, 0.]]),
-        ang=jp.array([[0., 0., 0.], [vel, 0., 0.]]))
-    qp, _ = jax.jit(sys.step)(qp, jp.array([]))
-    self.assertAlmostEqual(qp.pos[1, 1], 0., 3)  # returned to the origin
+        # initializing system to have a small initial velocity and ang velocity
+        # so that small angle approximation is valid
+        qp = brax.QP(
+            pos=jp.array([[0.0, 0.0, 0.0], [0.0, 0.0, -1.0]]),
+            rot=jp.array([[1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0]]),
+            vel=jp.array([[0.0, 0.0, 0.0], [0.0, vel, 0.0]]),
+            ang=jp.array([[0.0, 0.0, 0.0], [vel, 0.0, 0.0]]),
+        )
+        qp, _ = jax.jit(sys.step)(qp, jp.array([]))
+        self.assertAlmostEqual(qp.pos[1, 1], 0.0, 3)  # returned to the origin
 
-  offsets = [-15, 15, -45, 45, -75, 75]
-  axes = [
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 0, 1],
-      [1, 1, 0],
-      [0, 1, 1],
-      [1, 0, 1],
-      [1, 1, 1],
-  ]
-  limits = [0, 1]
+    offsets = [-15, 15, -45, 45, -75, 75]
+    axes = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+        [1, 1, 0],
+        [0, 1, 1],
+        [1, 0, 1],
+        [1, 1, 1],
+    ]
+    limits = [0, 1]
 
-  @parameterized.parameters(itertools.product(offsets, axes, limits))
-  def test_reference_offset(self, offset, axis, limit):
-    """Construct joint and check that default_qp generates offsets correctly."""
-    config = text_format.Parse(JointTest._CONFIG, brax.Config())
+    @parameterized.parameters(itertools.product(offsets, axes, limits))
+    def test_reference_offset(self, offset, axis, limit):
+        """Construct joint and check that default_qp generates offsets correctly."""
+        config = text_format.Parse(JointTest._CONFIG, brax.Config())
 
-    # loop over different types of joints
-    for l in range(3):
-      # construct appropriate number of angle_limits for this joint
-      if l == 0:
-        a_l = config.joints[0].angle_limit[0]
-      else:
-        a_l = config.joints[0].angle_limit.add()
-      # set angle default to either 0 or the offset value
-      a_l.min = offset * limit
-      a_l.max = offset * limit
+        # loop over different types of joints
+        for l in range(3):
+            # construct appropriate number of angle_limits for this joint
+            if l == 0:
+                a_l = config.joints[0].angle_limit[0]
+            else:
+                a_l = config.joints[0].angle_limit.add()
+            # set angle default to either 0 or the offset value
+            a_l.min = offset * limit
+            a_l.max = offset * limit
 
-      sys_default = brax.System(config)
+            sys_default = brax.System(config)
 
-      this_offset = offset * jp.array(axis)
+            this_offset = offset * jp.array(axis)
 
-      # duplicate config deeply
-      rotated_config = copy.deepcopy(config)
+            # duplicate config deeply
+            rotated_config = copy.deepcopy(config)
 
-      rotated_config.joints[0].reference_rotation.x = this_offset[0]
-      rotated_config.joints[0].reference_rotation.y = this_offset[1]
-      rotated_config.joints[0].reference_rotation.z = this_offset[2]
+            rotated_config.joints[0].reference_rotation.x = this_offset[0]
+            rotated_config.joints[0].reference_rotation.y = this_offset[1]
+            rotated_config.joints[0].reference_rotation.z = this_offset[2]
 
-      # construct a new config with this reference offset applied
-      sys_offset = brax.System(rotated_config)
-      offset_qp = sys_offset.default_qp()
+            # construct a new config with this reference offset applied
+            sys_offset = brax.System(rotated_config)
+            offset_qp = sys_offset.default_qp()
 
-      # construct joint functions for default and offset systems
-      qp_p = jp.take(offset_qp, 0)
-      qp_c = jp.take(offset_qp, 1)
-      joint_offset = jp.take(sys_offset.joints[0], 0)
-      joint_default = jp.take(sys_default.joints[0], 0)
+            # construct joint functions for default and offset systems
+            qp_p = jp.take(offset_qp, 0)
+            qp_c = jp.take(offset_qp, 1)
+            joint_offset = jp.take(sys_offset.joints[0], 0)
+            joint_default = jp.take(sys_default.joints[0], 0)
 
-      # calculate joint angles as seen by the default or offset system
-      _, angle_offset = joint_offset.axis_angle(qp_p, qp_c)
-      _, angle_default = joint_default.axis_angle(qp_p, qp_c)
-      angle_offset = (jp.array(angle_offset) / jp.pi) * 180
-      angle_default = (jp.array(angle_default) / jp.pi) * 180
-      num_offsets = l + 1
+            # calculate joint angles as seen by the default or offset system
+            _, angle_offset = joint_offset.axis_angle(qp_p, qp_c)
+            _, angle_default = joint_default.axis_angle(qp_p, qp_c)
+            angle_offset = (jp.array(angle_offset) / jp.pi) * 180
+            angle_default = (jp.array(angle_default) / jp.pi) * 180
+            num_offsets = l + 1
 
-      for a_o, a_d, t_o in zip(angle_offset[:num_offsets],
-                               angle_default[:num_offsets],
-                               this_offset[:num_offsets]):
-        if limit == 0:
-          # default system sees part rotated by offset degrees
-          self.assertAlmostEqual(a_d, t_o, 2)
-          # offset system sees part at local 0.0
-          self.assertAlmostEqual(a_o, 0.0, 2)
-        if limit == 1:
-          # when default angle is nonzero, there's not a clean relationship
-          # between the default and offset frames anymore, because the offset
-          # frame now has two rotations applied---1) the rotation that offsets
-          # it relative to the parent, and then 2) the rotation placing it at
-          # its default angle limit.  it should still be the case, though, that
-          # the offset angle agrees with the default angle limit.
-          self.assertAlmostEqual(a_o, offset, 2)
+            for a_o, a_d, t_o in zip(
+                angle_offset[:num_offsets],
+                angle_default[:num_offsets],
+                this_offset[:num_offsets],
+            ):
+                if limit == 0:
+                    # default system sees part rotated by offset degrees
+                    self.assertAlmostEqual(a_d, t_o, 2)
+                    # offset system sees part at local 0.0
+                    self.assertAlmostEqual(a_o, 0.0, 2)
+                if limit == 1:
+                    # when default angle is nonzero, there's not a clean relationship
+                    # between the default and offset frames anymore, because the offset
+                    # frame now has two rotations applied---1) the rotation that offsets
+                    # it relative to the parent, and then 2) the rotation placing it at
+                    # its default angle limit.  it should still be the case, though, that
+                    # the offset angle agrees with the default angle limit.
+                    self.assertAlmostEqual(a_o, offset, 2)
 
 
 class Actuator1DTest(parameterized.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     substeps: 80
     dt: 4.0
     bodies {
@@ -623,24 +632,24 @@ class Actuator1DTest(parameterized.TestCase):
     defaults { qps { name: "Anchor" pos {z: 2}} qps { name: "Bob" pos {z: 1}}}
   """
 
-  @parameterized.parameters(15., 30., 45., 90.)
-  def test_1d_angle_actuator(self, target_angle):
-    """A simple part actuates to a target angle."""
-    config = text_format.Parse(Actuator1DTest._CONFIG, brax.Config())
-    sys = brax.System(config=config)
-    qp = sys.default_qp()
-    qp, _ = sys.step(qp, jp.array([target_angle]))
-    qp_p = jp.take(qp, 0)
-    qp_c = jp.take(qp, 1)
-    joint = jp.take(sys.joints[0], 0)
-    _, (angle,) = joint.axis_angle(qp_p, qp_c)
+    @parameterized.parameters(15.0, 30.0, 45.0, 90.0)
+    def test_1d_angle_actuator(self, target_angle):
+        """A simple part actuates to a target angle."""
+        config = text_format.Parse(Actuator1DTest._CONFIG, brax.Config())
+        sys = brax.System(config=config)
+        qp = sys.default_qp()
+        qp, _ = sys.step(qp, jp.array([target_angle]))
+        qp_p = jp.take(qp, 0)
+        qp_c = jp.take(qp, 1)
+        joint = jp.take(sys.joints[0], 0)
+        _, (angle,) = joint.axis_angle(qp_p, qp_c)
 
-    self.assertAlmostEqual(target_angle * jp.pi / 180, angle, 2)
+        self.assertAlmostEqual(target_angle * jp.pi / 180, angle, 2)
 
 
 class Actuator2DTest(parameterized.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     substeps: 2000
     dt: 2.0
     bodies {
@@ -666,24 +675,24 @@ class Actuator2DTest(parameterized.TestCase):
     defaults { qps { name: "Anchor" pos {z: 2}} qps { name: "Bob" pos {z: 1}}}
   """
 
-  @parameterized.parameters((15., 30.), (-45., 80), (120, -60.), (-35., -52.))
-  def test_2d_angle_actuator(self, target_angle_1, target_angle_2):
-    """A simple part actuates 2d-angle actuator to two target angles."""
-    config = text_format.Parse(Actuator2DTest._CONFIG, brax.Config())
-    sys = brax.System(config=config)
-    qp = sys.default_qp()
-    qp, _ = jax.jit(sys.step)(qp, jp.array([target_angle_1, target_angle_2]))
-    qp_p = jp.take(qp, 0)
-    qp_c = jp.take(qp, 1)
-    joint = jp.take(sys.joints[0], 0)
-    _, angles = joint.axis_angle(qp_p, qp_c)
-    self.assertAlmostEqual(target_angle_1 * jp.pi / 180, angles[0], 2)
-    self.assertAlmostEqual(target_angle_2 * jp.pi / 180, angles[1], 2)
+    @parameterized.parameters((15.0, 30.0), (-45.0, 80), (120, -60.0), (-35.0, -52.0))
+    def test_2d_angle_actuator(self, target_angle_1, target_angle_2):
+        """A simple part actuates 2d-angle actuator to two target angles."""
+        config = text_format.Parse(Actuator2DTest._CONFIG, brax.Config())
+        sys = brax.System(config=config)
+        qp = sys.default_qp()
+        qp, _ = jax.jit(sys.step)(qp, jp.array([target_angle_1, target_angle_2]))
+        qp_p = jp.take(qp, 0)
+        qp_c = jp.take(qp, 1)
+        joint = jp.take(sys.joints[0], 0)
+        _, angles = joint.axis_angle(qp_p, qp_c)
+        self.assertAlmostEqual(target_angle_1 * jp.pi / 180, angles[0], 2)
+        self.assertAlmostEqual(target_angle_2 * jp.pi / 180, angles[1], 2)
 
 
 class Actuator3DTest(parameterized.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     substeps: 8000
     dt: 20
     bodies {
@@ -719,34 +728,35 @@ class Actuator3DTest(parameterized.TestCase):
     }
     defaults { qps { name: "Anchor" pos {z: 2}} qps { name: "Bob" pos {z: 1}}}
   """
-  torques = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)]
+    torques = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 1)]
 
-  @parameterized.parameters(((15, 15, 15), torques), ((35, 40, 75), torques),
-                            ((80, 45, 30), torques))
-  def test_3d_torque_actuator(self, limits, torques):
-    """A simple part actuates 3d-torque actuator to its limits."""
-    config = text_format.Parse(Actuator3DTest._CONFIG, brax.Config())
-    for t in torques:
-      for angle_limit, limit in zip(config.joints[0].angle_limit, limits):
-        angle_limit.min = -limit
-        angle_limit.max = limit
+    @parameterized.parameters(
+        ((15, 15, 15), torques), ((35, 40, 75), torques), ((80, 45, 30), torques)
+    )
+    def test_3d_torque_actuator(self, limits, torques):
+        """A simple part actuates 3d-torque actuator to its limits."""
+        config = text_format.Parse(Actuator3DTest._CONFIG, brax.Config())
+        for t in torques:
+            for angle_limit, limit in zip(config.joints[0].angle_limit, limits):
+                angle_limit.min = -limit
+                angle_limit.max = limit
 
-      sys = brax.System(config=config)
-      qp = sys.default_qp()
-      qp, _ = jax.jit(sys.step)(qp, jp.array(t))
-      qp_p = jp.take(qp, 0)
-      qp_c = jp.take(qp, 1)
-      joint = jp.take(sys.joints[0], 0)
-      _, angles = joint.axis_angle(qp_p, qp_c)
-      angles = [a * 180 / jp.pi for a in angles]
-      for angle, limit, torque in zip(angles, limits, t):
-        if torque != 0:
-          self.assertAlmostEqual(angle, limit, 1)  # actuated to target angle
+            sys = brax.System(config=config)
+            qp = sys.default_qp()
+            qp, _ = jax.jit(sys.step)(qp, jp.array(t))
+            qp_p = jp.take(qp, 0)
+            qp_c = jp.take(qp, 1)
+            joint = jp.take(sys.joints[0], 0)
+            _, angles = joint.axis_angle(qp_p, qp_c)
+            angles = [a * 180 / jp.pi for a in angles]
+            for angle, limit, torque in zip(angles, limits, t):
+                if torque != 0:
+                    self.assertAlmostEqual(angle, limit, 1)  # actuated to target angle
 
 
 class SphericalizeTest(parameterized.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     substeps: 2
     dt: .01
     gravity { z: 0.0 }
@@ -774,27 +784,29 @@ class SphericalizeTest(parameterized.TestCase):
     }
   """
 
-  def test_free_dofs(self):
-    """Constructs a sphericalized joint with differing free dofs per joint."""
-    config = text_format.Parse(SphericalizeTest._CONFIG, brax.Config())
-    sys = brax.System(config)
+    def test_free_dofs(self):
+        """Constructs a sphericalized joint with differing free dofs per joint."""
+        config = text_format.Parse(SphericalizeTest._CONFIG, brax.Config())
+        sys = brax.System(config)
 
-    # 3 joints have been sphericalized into 1 spherical joint
-    self.assertLen(sys.joints, 1)
-    # correct number of free dofs for each joint
-    self.assertEqual(sys.joints[0].free_dofs, [1, 2, 3])
-    # correct indices are tracked as free
-    joint = sys.joints[0]
-    dof_indices = jp.concatenate([
-        jp.arange(i * joint.dof, i * joint.dof + dw)
-        for i, dw in enumerate(joint.free_dofs)
-    ])
-    self.assertListEqual(list(dof_indices), [0, 3, 4, 6, 7, 8])
+        # 3 joints have been sphericalized into 1 spherical joint
+        self.assertLen(sys.joints, 1)
+        # correct number of free dofs for each joint
+        self.assertEqual(sys.joints[0].free_dofs, [1, 2, 3])
+        # correct indices are tracked as free
+        joint = sys.joints[0]
+        dof_indices = jp.concatenate(
+            [
+                jp.arange(i * joint.dof, i * joint.dof + dw)
+                for i, dw in enumerate(joint.free_dofs)
+            ]
+        )
+        self.assertListEqual(list(dof_indices), [0, 3, 4, 6, 7, 8])
 
 
 class ForceTest(parameterized.TestCase):
 
-  _CONFIG = """
+    _CONFIG = """
     dt: 0.1
     substeps: 5000
     bodies { name: "body" mass: 1 inertia { x: 1 y: 1 z: 1 }}
@@ -812,29 +824,29 @@ class ForceTest(parameterized.TestCase):
     }
   """
 
-  @parameterized.parameters(1, 5, 10)
-  def test_thruster(self, force):
-    """A simple part actuates to a target angle."""
-    config = text_format.Parse(ForceTest._CONFIG, brax.Config())
-    sys = brax.System(config=config)
-    qp = sys.default_qp()
-    qp, _ = sys.step(qp, force * jp.array([1., 0., 0., 0., 0., 0]))
+    @parameterized.parameters(1, 5, 10)
+    def test_thruster(self, force):
+        """A simple part actuates to a target angle."""
+        config = text_format.Parse(ForceTest._CONFIG, brax.Config())
+        sys = brax.System(config=config)
+        qp = sys.default_qp()
+        qp, _ = sys.step(qp, force * jp.array([1.0, 0.0, 0.0, 0.0, 0.0, 0]))
 
-    self.assertAlmostEqual(qp.pos[0][0], 0.5 * 2.5 * force * 0.1**2, 3)
+        self.assertAlmostEqual(qp.pos[0][0], 0.5 * 2.5 * force * 0.1**2, 3)
 
-  @parameterized.parameters(1, 5, 10)
-  def test_twister(self, torque):
-    """A simple part actuates to a target angle."""
-    config = text_format.Parse(ForceTest._CONFIG, brax.Config())
-    sys = brax.System(config=config)
-    qp = sys.default_qp()
-    qp, _ = sys.step(qp, torque * jp.array([0., 0., 0., 1., 0., 0]))
+    @parameterized.parameters(1, 5, 10)
+    def test_twister(self, torque):
+        """A simple part actuates to a target angle."""
+        config = text_format.Parse(ForceTest._CONFIG, brax.Config())
+        sys = brax.System(config=config)
+        qp = sys.default_qp()
+        qp, _ = sys.step(qp, torque * jp.array([0.0, 0.0, 0.0, 1.0, 0.0, 0]))
 
-    self.assertAlmostEqual(qp.ang[0][0], 2.5 * torque * 0.1, 3)
+        self.assertAlmostEqual(qp.ang[0][0], 2.5 * torque * 0.1, 3)
 
 
 class ElasticityTest(parameterized.TestCase):
-  _CONFIG = """
+    _CONFIG = """
   dt: 0.01 substeps: 10 friction: 0.0 elasticity: 1.0
   gravity { z: -9.8 }
   bodies {
@@ -862,59 +874,62 @@ class ElasticityTest(parameterized.TestCase):
               qps { name: "boxwall" pos { x: 10 } } }
   """
 
-  @parameterized.parameters(0, .5, 1.)
-  def test_ball_bounce(self, elasticity):
-    """A ball bounces off a wall where ball and wall have some elasticity."""
-    config = text_format.Parse(ElasticityTest._CONFIG, brax.Config())
-    config.elasticity = elasticity
-    sys = brax.System(config=config)
-    qp = sys.default_qp(0)
-    qp_init = qp
-    step_fn = jax.jit(sys.step)
-    for _ in range(100):
-      qp, _ = step_fn(qp, jp.array([]))
+    @parameterized.parameters(0, 0.5, 1.0)
+    def test_ball_bounce(self, elasticity):
+        """A ball bounces off a wall where ball and wall have some elasticity."""
+        config = text_format.Parse(ElasticityTest._CONFIG, brax.Config())
+        config.elasticity = elasticity
+        sys = brax.System(config=config)
+        qp = sys.default_qp(0)
+        qp_init = qp
+        step_fn = jax.jit(sys.step)
+        for _ in range(100):
+            qp, _ = step_fn(qp, jp.array([]))
 
-    self.assertAlmostEqual(qp_init.vel[0][0] * (-1) * (elasticity**2.),
-                           qp.vel[0][0], 2)
+        self.assertAlmostEqual(
+            qp_init.vel[0][0] * (-1) * (elasticity**2.0), qp.vel[0][0], 2
+        )
 
-  @parameterized.parameters(0, 1.)
-  def test_ball_bounce_vertical(self, elasticity):
-    """A ball bounces off another ball, with gravity."""
-    config = text_format.Parse(ElasticityTest._CONFIG, brax.Config())
-    config.elasticity = elasticity
-    # time to reach the ball again.
-    impact_time = 2 * 5 / 9.8
-    config.dt = impact_time / 100.
-    sys = brax.System(config=config)
-    qp = sys.default_qp(1)
-    qp_init = qp
-    step_fn = jax.jit(sys.step)
-    for _ in range(400):
-      qp, _ = step_fn(qp, jp.array([]))
+    @parameterized.parameters(0, 1.0)
+    def test_ball_bounce_vertical(self, elasticity):
+        """A ball bounces off another ball, with gravity."""
+        config = text_format.Parse(ElasticityTest._CONFIG, brax.Config())
+        config.elasticity = elasticity
+        # time to reach the ball again.
+        impact_time = 2 * 5 / 9.8
+        config.dt = impact_time / 100.0
+        sys = brax.System(config=config)
+        qp = sys.default_qp(1)
+        qp_init = qp
+        step_fn = jax.jit(sys.step)
+        for _ in range(400):
+            qp, _ = step_fn(qp, jp.array([]))
 
-    self.assertAlmostEqual(
-        qp_init.vel[0][2] * (elasticity**2.), qp.vel[0][2], delta=.02)
+        self.assertAlmostEqual(
+            qp_init.vel[0][2] * (elasticity**2.0), qp.vel[0][2], delta=0.02
+        )
 
-  @parameterized.parameters(0, 1.)
-  def test_ball_bounce_vertical_frozen(self, elasticity):
-    """A ball bounces off another frozen ball, with gravity."""
-    config = text_format.Parse(ElasticityTest._CONFIG, brax.Config())
-    config.elasticity = elasticity
-    # freeze the ground ball
-    config.bodies[1].frozen.all = True
-    # time to reach the ball again.
-    impact_time = 2 * 5 / 9.8
-    config.dt = impact_time / 100.
-    sys = brax.System(config=config)
-    qp = sys.default_qp(1)
-    qp_init = qp
-    step_fn = jax.jit(sys.step)
-    for _ in range(100):
-      qp, _ = step_fn(qp, jp.array([]))
+    @parameterized.parameters(0, 1.0)
+    def test_ball_bounce_vertical_frozen(self, elasticity):
+        """A ball bounces off another frozen ball, with gravity."""
+        config = text_format.Parse(ElasticityTest._CONFIG, brax.Config())
+        config.elasticity = elasticity
+        # freeze the ground ball
+        config.bodies[1].frozen.all = True
+        # time to reach the ball again.
+        impact_time = 2 * 5 / 9.8
+        config.dt = impact_time / 100.0
+        sys = brax.System(config=config)
+        qp = sys.default_qp(1)
+        qp_init = qp
+        step_fn = jax.jit(sys.step)
+        for _ in range(100):
+            qp, _ = step_fn(qp, jp.array([]))
 
-    self.assertAlmostEqual(
-        qp_init.vel[0][2] * (elasticity**2.), qp.vel[0][2], delta=.04)
+        self.assertAlmostEqual(
+            qp_init.vel[0][2] * (elasticity**2.0), qp.vel[0][2], delta=0.04
+        )
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

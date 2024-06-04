@@ -18,12 +18,12 @@ import itertools
 from brax.v1.experimental.braxlines.experiments import defaults
 
 seed = 0
-comps = [('ant', {}), ('pro_ant', dict(num_legs=[2, 6]))]
+comps = [("ant", {}), ("pro_ant", dict(num_legs=[2, 6]))]
 
-AGENT_MODULE = 'brax.experimental.composer.train'
+AGENT_MODULE = "brax.experimental.composer.train"
 CONFIG = [
     dict(
-        env_name='sumo',
+        env_name="sumo",
         env_params=dict(
             main_agent=[comp1[0]],
             main_agent_params=comp1[1],
@@ -31,15 +31,16 @@ CONFIG = [
             other_agent_params=comp2[1],
             num_agents=list(range(2, 3)),
             chase_scale=[0, 1],
-            opp_scale=[1., 10.],
-            centering_scale=[0., .1, 1.],
-            knocking_scale=[.1, 1., 10.],
-            control_scale=.1,
-            draw_scale=0.,
-            ring_size=3.,
-            win_bonus=1.,
+            opp_scale=[1.0, 10.0],
+            centering_scale=[0.0, 0.1, 1.0],
+            knocking_scale=[0.1, 1.0, 10.0],
+            control_scale=0.1,
+            draw_scale=0.0,
+            ring_size=3.0,
+            win_bonus=1.0,
         ),
         seed=seed,
-        ppo_params=defaults.get_ppo_params(comp1[0], 3, default='ant'))
+        ppo_params=defaults.get_ppo_params(comp1[0], 3, default="ant"),
+    )
     for comp1, comp2 in itertools.product(comps, comps)
 ]

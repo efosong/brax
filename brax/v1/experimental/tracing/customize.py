@@ -22,27 +22,27 @@ from brax.v1 import pytree
 
 @pytree.register
 class TracedConfig:
-  """A wrapper around the config that faciltates jax tracing of static data."""
+    """A wrapper around the config that faciltates jax tracing of static data."""
 
-  __pytree_ignore__ = ('msg',)
+    __pytree_ignore__ = ("msg",)
 
-  def __init__(self, msg: Any, custom_tree: Dict[str, Any]):
-    self.msg = msg
-    self.custom_tree = custom_tree
+    def __init__(self, msg: Any, custom_tree: Dict[str, Any]):
+        self.msg = msg
+        self.custom_tree = custom_tree
 
-  def __getattr__(self, name: str):
+    def __getattr__(self, name: str):
 
-    base = self.msg.__getattribute__(name)  # pytype:disable=attribute-error
+        base = self.msg.__getattribute__(name)  # pytype:disable=attribute-error
 
-    if name in self.custom_tree:
-      if isinstance(base, Iterable) and not isinstance(base, str):
-        list_msg = []
-        for o, b in zip(self.custom_tree[name], base):
-          list_msg.append(TracedConfig(b, custom_tree=o))
-        return list_msg
-      elif not isinstance(self.custom_tree[name], dict):
-        return self.custom_tree[name]
-      else:
-        return TracedConfig(base, self.custom_tree[name])
+        if name in self.custom_tree:
+            if isinstance(base, Iterable) and not isinstance(base, str):
+                list_msg = []
+                for o, b in zip(self.custom_tree[name], base):
+                    list_msg.append(TracedConfig(b, custom_tree=o))
+                return list_msg
+            elif not isinstance(self.custom_tree[name], dict):
+                return self.custom_tree[name]
+            else:
+                return TracedConfig(base, self.custom_tree[name])
 
-    return base
+        return base

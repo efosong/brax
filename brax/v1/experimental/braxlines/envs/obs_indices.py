@@ -22,20 +22,20 @@ OBS_INDICES = dict(
         halfcheetah=(11,),
         hopper=(8,),
         walker2d=(11,),
-        uni_ant=(('body_vel:torso_ant1', 0), ('body_vel:torso_ant1', 1)),
-        bi_ant=(('body_vel:torso_ant1', 0), ('body_vel:torso_ant2', 0)),
-    ),)
+        uni_ant=(("body_vel:torso_ant1", 0), ("body_vel:torso_ant1", 1)),
+        bi_ant=(("body_vel:torso_ant1", 0), ("body_vel:torso_ant2", 0)),
+    ),
+)
 
 
-def register_indices(env_name: str, indices_type: str,
-                     indices: Tuple[Union[int, Any]]):
-  """Register indices."""
-  global OBS_INDICES
-  if indices_type not in OBS_INDICES:
-    OBS_INDICES[indices_type] = {}
-  OBS_INDICES[indices_type][env_name] = indices
+def register_indices(env_name: str, indices_type: str, indices: Tuple[Union[int, Any]]):
+    """Register indices."""
+    global OBS_INDICES
+    if indices_type not in OBS_INDICES:
+        OBS_INDICES[indices_type] = {}
+    OBS_INDICES[indices_type][env_name] = indices
 
 
 def get_indices(env_name: str, indices_type: str):
-  """Get indices."""
-  return OBS_INDICES.get(indices_type, {}).get(env_name, None)
+    """Get indices."""
+    return OBS_INDICES.get(indices_type, {}).get(env_name, None)

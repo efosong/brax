@@ -20,202 +20,201 @@ from brax.v1.envs import env
 
 
 class Halfcheetah(env.Env):
+    """
+    ### Description
 
+    This environment is based on the work by P. Wawrzyński in
+    ["A Cat-Like Robot Real-Time Learning to Run"](http://staff.elka.pw.edu.pl/~pwawrzyn/pub-s/0812_LSCLRR.pdf).
 
+    The HalfCheetah is a 2-dimensional robot consisting of 9 links and 8 joints
+    connecting them (including two paws).
 
-  """
-  ### Description
+    The goal is to apply a torque on the joints to make the cheetah run forward
+    (right) as fast as possible, with a positive reward allocated based on the
+    distance moved forward and a negative reward allocated for moving backward.
 
-  This environment is based on the work by P. Wawrzyński in
-  ["A Cat-Like Robot Real-Time Learning to Run"](http://staff.elka.pw.edu.pl/~pwawrzyn/pub-s/0812_LSCLRR.pdf).
+    The torso and head of the cheetah are fixed, and the torque can only be
+    applied on the other 6 joints over the front and back thighs (connecting to
+    the torso), shins (connecting to the thighs) and feet (connecting to the
+    shins).
 
-  The HalfCheetah is a 2-dimensional robot consisting of 9 links and 8 joints
-  connecting them (including two paws).
+    ### Action Space
 
-  The goal is to apply a torque on the joints to make the cheetah run forward
-  (right) as fast as possible, with a positive reward allocated based on the
-  distance moved forward and a negative reward allocated for moving backward.
+    The agents take a 6-element vector for actions. The action space is a
+    continuous `(action, action, action, action, action, action)` all in
+    `[-1.0, 1.0]`, where `action` represents the numerical torques applied
+    between *links*
 
-  The torso and head of the cheetah are fixed, and the torque can only be
-  applied on the other 6 joints over the front and back thighs (connecting to
-  the torso), shins (connecting to the thighs) and feet (connecting to the
-  shins).
+    | Num | Action                                  | Control Min | Control Max | Name (in corresponding config) | Joint | Unit         |
+    |-----|-----------------------------------------|-------------|-------------|--------------------------------|-------|--------------|
+    | 0   | Torque applied on the back thigh rotor  | -1          | 1           | bthigh                         | hinge | torque (N m) |
+    | 1   | Torque applied on the back shin rotor   | -1          | 1           | bshin                          | hinge | torque (N m) |
+    | 2   | Torque applied on the back foot rotor   | -1          | 1           | bfoot                          | hinge | torque (N m) |
+    | 3   | Torque applied on the front thigh rotor | -1          | 1           | fthigh                         | hinge | torque (N m) |
+    | 4   | Torque applied on the front shin rotor  | -1          | 1           | fshin                          | hinge | torque (N m) |
+    | 5   | Torque applied on the front foot rotor  | -1          | 1           | ffoot                          | hinge | torque (N m) |
 
-  ### Action Space
+    ### Observation Space
 
-  The agents take a 6-element vector for actions. The action space is a
-  continuous `(action, action, action, action, action, action)` all in
-  `[-1.0, 1.0]`, where `action` represents the numerical torques applied
-  between *links*
+    The state space consists of positional values of different body parts of the
+    cheetah, followed by the velocities of those individual parts (their
+    derivatives) with all the positions ordered before all the velocities.
 
-  | Num | Action                                  | Control Min | Control Max | Name (in corresponding config) | Joint | Unit         |
-  |-----|-----------------------------------------|-------------|-------------|--------------------------------|-------|--------------|
-  | 0   | Torque applied on the back thigh rotor  | -1          | 1           | bthigh                         | hinge | torque (N m) |
-  | 1   | Torque applied on the back shin rotor   | -1          | 1           | bshin                          | hinge | torque (N m) |
-  | 2   | Torque applied on the back foot rotor   | -1          | 1           | bfoot                          | hinge | torque (N m) |
-  | 3   | Torque applied on the front thigh rotor | -1          | 1           | fthigh                         | hinge | torque (N m) |
-  | 4   | Torque applied on the front shin rotor  | -1          | 1           | fshin                          | hinge | torque (N m) |
-  | 5   | Torque applied on the front foot rotor  | -1          | 1           | ffoot                          | hinge | torque (N m) |
+    The observation is a `ndarray` with shape `(18,)` where the elements
+    correspond to the following:
 
-  ### Observation Space
+    | Num | Observation                          | Min  | Max | Name (in corresponding config) | Joint | Unit                     |
+    |-----|--------------------------------------|------|-----|--------------------------------|-------|--------------------------|
+    | 0   | z-coordinate of the center of mass   | -Inf | Inf | rootx                          | slide | position (m)             |
+    | 1   | w-orientation of the front tip       | -Inf | Inf | rooty                          | hinge | angle (rad)              |
+    | 2   | y-orientation of the front tip       | -Inf | Inf | rooty                          | hinge | angle (rad)              |
+    | 3   | angle of the back thigh rotor        | -Inf | Inf | bthigh                         | hinge | angle (rad)              |
+    | 4   | angle of the back shin rotor         | -Inf | Inf | bshin                          | hinge | angle (rad)              |
+    | 5   | angle of the back foot rotor         | -Inf | Inf | bfoot                          | hinge | angle (rad)              |
+    | 6   | velocity of the tip along the y-axis | -Inf | Inf | fthigh                         | hinge | angle (rad)              |
+    | 7   | angular velocity of front tip        | -Inf | Inf | fshin                          | hinge | angle (rad)              |
+    | 8   | angular velocity of second rotor     | -Inf | Inf | ffoot                          | hinge | angle (rad)              |
+    | 9   | x-coordinate of the front tip        | -Inf | Inf | rootx                          | slide | velocity (m/s)           |
+    | 10  | y-coordinate of the front tip        | -Inf | Inf | rootz                          | slide | velocity (m/s)           |
+    | 11  | angle of the front tip               | -Inf | Inf | rooty                          | hinge | angular velocity (rad/s) |
+    | 12  | angle of the second rotor            | -Inf | Inf | bthigh                         | hinge | angular velocity (rad/s) |
+    | 13  | angle of the second rotor            | -Inf | Inf | bshin                          | hinge | angular velocity (rad/s) |
+    | 14  | velocity of the tip along the x-axis | -Inf | Inf | bfoot                          | hinge | angular velocity (rad/s) |
+    | 15  | velocity of the tip along the y-axis | -Inf | Inf | fthigh                         | hinge | angular velocity (rad/s) |
+    | 16  | angular velocity of front tip        | -Inf | Inf | fshin                          | hinge | angular velocity (rad/s) |
+    | 17  | angular velocity of second rotor     | -Inf | Inf | ffoot                          | hinge | angular velocity (rad/s) |
 
-  The state space consists of positional values of different body parts of the
-  cheetah, followed by the velocities of those individual parts (their
-  derivatives) with all the positions ordered before all the velocities.
+    ### Rewards
 
-  The observation is a `ndarray` with shape `(18,)` where the elements
-  correspond to the following:
+    The reward consists of two parts:
 
-  | Num | Observation                          | Min  | Max | Name (in corresponding config) | Joint | Unit                     |
-  |-----|--------------------------------------|------|-----|--------------------------------|-------|--------------------------|
-  | 0   | z-coordinate of the center of mass   | -Inf | Inf | rootx                          | slide | position (m)             |
-  | 1   | w-orientation of the front tip       | -Inf | Inf | rooty                          | hinge | angle (rad)              |
-  | 2   | y-orientation of the front tip       | -Inf | Inf | rooty                          | hinge | angle (rad)              |
-  | 3   | angle of the back thigh rotor        | -Inf | Inf | bthigh                         | hinge | angle (rad)              |
-  | 4   | angle of the back shin rotor         | -Inf | Inf | bshin                          | hinge | angle (rad)              |
-  | 5   | angle of the back foot rotor         | -Inf | Inf | bfoot                          | hinge | angle (rad)              |
-  | 6   | velocity of the tip along the y-axis | -Inf | Inf | fthigh                         | hinge | angle (rad)              |
-  | 7   | angular velocity of front tip        | -Inf | Inf | fshin                          | hinge | angle (rad)              |
-  | 8   | angular velocity of second rotor     | -Inf | Inf | ffoot                          | hinge | angle (rad)              |
-  | 9   | x-coordinate of the front tip        | -Inf | Inf | rootx                          | slide | velocity (m/s)           |
-  | 10  | y-coordinate of the front tip        | -Inf | Inf | rootz                          | slide | velocity (m/s)           |
-  | 11  | angle of the front tip               | -Inf | Inf | rooty                          | hinge | angular velocity (rad/s) |
-  | 12  | angle of the second rotor            | -Inf | Inf | bthigh                         | hinge | angular velocity (rad/s) |
-  | 13  | angle of the second rotor            | -Inf | Inf | bshin                          | hinge | angular velocity (rad/s) |
-  | 14  | velocity of the tip along the x-axis | -Inf | Inf | bfoot                          | hinge | angular velocity (rad/s) |
-  | 15  | velocity of the tip along the y-axis | -Inf | Inf | fthigh                         | hinge | angular velocity (rad/s) |
-  | 16  | angular velocity of front tip        | -Inf | Inf | fshin                          | hinge | angular velocity (rad/s) |
-  | 17  | angular velocity of second rotor     | -Inf | Inf | ffoot                          | hinge | angular velocity (rad/s) |
+    - *reward_run*: A reward of moving forward which is measured as
+      *(x-coordinate before action - x-coordinate after action)/dt*. *dt* is the
+      time between actions - the default *dt = 0.05*. This reward would be
+      positive if the cheetah runs forward (right) desired.
+    - *reward_ctrl*: A negative reward for penalising the cheetah if it takes
+      actions that are too large. It is measured as *-coefficient x
+      sum(action<sup>2</sup>)* where *coefficient* is a parameter set for the
+      control and has a default value of 0.1
 
-  ### Rewards
+    ### Starting State
 
-  The reward consists of two parts:
+    All observations start in state (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,) with a noise added to the initial
+    state for stochasticity. As seen before, the first 8 values in the state are
+    positional and the last 9 values are velocity. A uniform noise in the range of
+    [-0.1, 0.1] is added to the positional values while a standard normal noise
+    with a mean of 0 and standard deviation of 0.1 is added to the initial
+    velocity values of all zeros.
 
-  - *reward_run*: A reward of moving forward which is measured as
-    *(x-coordinate before action - x-coordinate after action)/dt*. *dt* is the
-    time between actions - the default *dt = 0.05*. This reward would be
-    positive if the cheetah runs forward (right) desired.
-  - *reward_ctrl*: A negative reward for penalising the cheetah if it takes
-    actions that are too large. It is measured as *-coefficient x
-    sum(action<sup>2</sup>)* where *coefficient* is a parameter set for the
-    control and has a default value of 0.1
+    ### Episode Termination
 
-  ### Starting State
+    The episode terminates when the episode length is greater than 1000.
 
-  All observations start in state (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-  0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,) with a noise added to the initial
-  state for stochasticity. As seen before, the first 8 values in the state are
-  positional and the last 9 values are velocity. A uniform noise in the range of
-  [-0.1, 0.1] is added to the positional values while a standard normal noise
-  with a mean of 0 and standard deviation of 0.1 is added to the initial
-  velocity values of all zeros.
+    ### Arguments
 
-  ### Episode Termination
+    No additional arguments are currently supported (in v2 and lower), but
+    modifications can be made to the XML file in the assets folder
+    (or by changing the path to a modified XML file in another folder).
 
-  The episode terminates when the episode length is greater than 1000.
+    ```
+    env = gym.make('HalfCheetah-v2')
+    ```
 
-  ### Arguments
+    v3, v4, and v5 take gym.make kwargs such as ctrl_cost_weight,
+    reset_noise_scale etc.
 
-  No additional arguments are currently supported (in v2 and lower), but
-  modifications can be made to the XML file in the assets folder
-  (or by changing the path to a modified XML file in another folder).
+    ```
+    env = gym.make('HalfCheetah-v5', ctrl_cost_weight=0.1, ....)
 
-  ```
-  env = gym.make('HalfCheetah-v2')
-  ```
+    ### Version History
 
-  v3, v4, and v5 take gym.make kwargs such as ctrl_cost_weight,
-  reset_noise_scale etc.
+    * v5: ported to Brax.
+    * v4: all mujoco environments now use the mujoco bindings in mujoco>=2.1.3
+    * v3: support for gym.make kwargs such as xml_file, ctrl_cost_weight,
+      reset_noise_scale etc. rgb rendering comes from tracking camera (so agent
+      does not run away from screen)
+    * v2: All continuous control environments now use mujoco_py >= 1.50
+    * v1: max_time_steps raised to 1000 for robot based tasks. Added
+      reward_threshold to environments.
+    * v0: Initial versions release (1.0.0)
+    """
 
-  ```
-  env = gym.make('HalfCheetah-v5', ctrl_cost_weight=0.1, ....)
+    def __init__(
+        self,
+        forward_reward_weight=1.0,
+        ctrl_cost_weight=0.1,
+        reset_noise_scale=0.1,
+        legacy_spring=False,
+        exclude_current_positions_from_observation=True,
+        **kwargs
+    ):
+        config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
+        super().__init__(config=config, **kwargs)
 
-  ### Version History
+        self._forward_reward_weight = forward_reward_weight
+        self._ctrl_cost_weight = ctrl_cost_weight
+        self._reset_noise_scale = reset_noise_scale
+        self._exclude_current_positions_from_observation = (
+            exclude_current_positions_from_observation
+        )
 
-  * v5: ported to Brax.
-  * v4: all mujoco environments now use the mujoco bindings in mujoco>=2.1.3
-  * v3: support for gym.make kwargs such as xml_file, ctrl_cost_weight,
-    reset_noise_scale etc. rgb rendering comes from tracking camera (so agent
-    does not run away from screen)
-  * v2: All continuous control environments now use mujoco_py >= 1.50
-  * v1: max_time_steps raised to 1000 for robot based tasks. Added
-    reward_threshold to environments.
-  * v0: Initial versions release (1.0.0)
-  """
+    def reset(self, rng: jp.ndarray) -> env.State:
+        """Resets the environment to an initial state."""
+        rng, rng1, rng2 = jp.random_split(rng, 3)
 
+        qpos = self.sys.default_angle() + self._noise(rng1)
+        qvel = self._noise(rng2)
 
-  def __init__(self,
-               forward_reward_weight=1.0,
-               ctrl_cost_weight=0.1,
-               reset_noise_scale=0.1,
-               legacy_spring=False,
-               exclude_current_positions_from_observation=True,
-               **kwargs):
-    config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
-    super().__init__(config=config, **kwargs)
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        obs = self._get_obs(qp, self.sys.info(qp))
+        reward, done, zero = jp.zeros(3)
+        metrics = {
+            "x_position": zero,
+            "x_velocity": zero,
+            "reward_ctrl": zero,
+            "reward_run": zero,
+        }
+        return env.State(qp, obs, reward, done, metrics)
 
-    self._forward_reward_weight = forward_reward_weight
-    self._ctrl_cost_weight = ctrl_cost_weight
-    self._reset_noise_scale = reset_noise_scale
-    self._exclude_current_positions_from_observation = (
-        exclude_current_positions_from_observation
-    )
+    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+        """Run one timestep of the environment's dynamics."""
+        qp, info = self.sys.step(state.qp, action)
 
-  def reset(self, rng: jp.ndarray) -> env.State:
-    """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
+        velocity = (qp.pos[0] - state.qp.pos[0]) / self.sys.config.dt
+        forward_reward = self._forward_reward_weight * velocity[0]
+        ctrl_cost = self._ctrl_cost_weight * jp.sum(jp.square(action))
 
-    qpos = self.sys.default_angle() + self._noise(rng1)
-    qvel = self._noise(rng2)
+        obs = self._get_obs(qp, info)
+        reward = forward_reward - ctrl_cost
+        state.metrics.update(
+            x_position=qp.pos[0, 0],
+            x_velocity=velocity[0],
+            reward_run=forward_reward,
+            reward_ctrl=-ctrl_cost,
+        )
 
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    obs = self._get_obs(qp, self.sys.info(qp))
-    reward, done, zero = jp.zeros(3)
-    metrics = {
-        'x_position': zero,
-        'x_velocity': zero,
-        'reward_ctrl': zero,
-        'reward_run': zero,
-    }
-    return env.State(qp, obs, reward, done, metrics)
+        return state.replace(qp=qp, obs=obs, reward=reward)
 
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
-    """Run one timestep of the environment's dynamics."""
-    qp, info = self.sys.step(state.qp, action)
+    def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
+        """Observe halfcheetah body position and velocities."""
+        joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
 
-    velocity = (qp.pos[0] - state.qp.pos[0]) / self.sys.config.dt
-    forward_reward = self._forward_reward_weight * velocity[0]
-    ctrl_cost = self._ctrl_cost_weight * jp.sum(jp.square(action))
+        # qpos: position and orientation of the torso and the joint angles
+        # TODO: convert rot to just y-ang component
+        if self._exclude_current_positions_from_observation:
+            qpos = [qp.pos[0, 2:], qp.rot[0, (0, 2)], joint_angle]
+        else:
+            qpos = [qp.pos[0, (0, 2)], qp.rot[0, (0, 2)], joint_angle]
 
-    obs = self._get_obs(qp, info)
-    reward = forward_reward - ctrl_cost
-    state.metrics.update(
-        x_position=qp.pos[0, 0],
-        x_velocity=velocity[0],
-        reward_run=forward_reward,
-        reward_ctrl=-ctrl_cost)
+        # qvel: velocity of the torso and the joint angle velocities
+        qvel = [qp.vel[0, (0, 2)], qp.ang[0, 1:2], joint_vel]
 
-    return state.replace(qp=qp, obs=obs, reward=reward)
+        return jp.concatenate(qpos + qvel)
 
-  def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
-    """Observe halfcheetah body position and velocities."""
-    joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
-
-    # qpos: position and orientation of the torso and the joint angles
-    # TODO: convert rot to just y-ang component
-    if self._exclude_current_positions_from_observation:
-      qpos = [qp.pos[0, 2:], qp.rot[0, (0, 2)], joint_angle]
-    else:
-      qpos = [qp.pos[0, (0, 2)], qp.rot[0, (0, 2)], joint_angle]
-
-    # qvel: velocity of the torso and the joint angle velocities
-    qvel = [qp.vel[0, (0, 2)], qp.ang[0, 1:2], joint_vel]
-
-    return jp.concatenate(qpos + qvel)
-
-  def _noise(self, rng):
-    low, hi = -self._reset_noise_scale, self._reset_noise_scale
-    return jp.random_uniform(rng, (self.sys.num_joint_dof,), low, hi)
+    def _noise(self, rng):
+        low, hi = -self._reset_noise_scale, self._reset_noise_scale
+        return jp.random_uniform(rng, (self.sys.num_joint_dof,), low, hi)
 
 
 _SYSTEM_CONFIG = """

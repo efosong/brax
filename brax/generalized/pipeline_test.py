@@ -27,32 +27,32 @@ import numpy as np
 
 class PipelineTest(parameterized.TestCase):
 
-  @parameterized.parameters(
-      ('ant.xml',),
-      ('triple_pendulum.xml',),
-      ('humanoid.xml',),
-      ('half_cheetah.xml',),
-      ('swimmer.xml',),
-  )
-  def test_forward(self, xml_file):
-    """Test pipeline step."""
-    sys = test_utils.load_fixture(xml_file)
-    # crank up solver iterations just to demonstrate close match to mujoco
-    sys = sys.replace(solver_iterations=500)
-    for mj_prev, mj_next in test_utils.sample_mujoco_states(xml_file):
-      state = jax.jit(pipeline.init)(sys, mj_prev.qpos, mj_prev.qvel)
-      state = jax.jit(pipeline.step)(sys, state, jp.zeros(sys.act_size()))
+    @parameterized.parameters(
+        ("ant.xml",),
+        ("triple_pendulum.xml",),
+        ("humanoid.xml",),
+        ("half_cheetah.xml",),
+        ("swimmer.xml",),
+    )
+    def test_forward(self, xml_file):
+        """Test pipeline step."""
+        sys = test_utils.load_fixture(xml_file)
+        # crank up solver iterations just to demonstrate close match to mujoco
+        sys = sys.replace(solver_iterations=500)
+        for mj_prev, mj_next in test_utils.sample_mujoco_states(xml_file):
+            state = jax.jit(pipeline.init)(sys, mj_prev.qpos, mj_prev.qvel)
+            state = jax.jit(pipeline.step)(sys, state, jp.zeros(sys.act_size()))
 
-      np.testing.assert_allclose(state.q, mj_next.qpos, atol=0.002)
-      np.testing.assert_allclose(state.qd, mj_next.qvel, atol=0.5)
+            np.testing.assert_allclose(state.q, mj_next.qpos, atol=0.002)
+            np.testing.assert_allclose(state.qd, mj_next.qvel, atol=0.5)
 
 
 class GradientTest(absltest.TestCase):
-  """Tests that gradients are not NaN."""
-
-  def test_grad(self):
     """Tests that gradients are not NaN."""
-    xml = """
+
+    def test_grad(self):
+        """Tests that gradients are not NaN."""
+        xml = """
     <mujoco>
       <worldbody>
         <body>
@@ -63,21 +63,19 @@ class GradientTest(absltest.TestCase):
       </worldbody>
     </mujoco>
     """
-    sys = mjcf.loads(xml)
-    init_state = jax.jit(pipeline.init)(
-        sys, sys.init_q, jp.zeros(sys.qd_size())
-    )
+        sys = mjcf.loads(xml)
+        init_state = jax.jit(pipeline.init)(sys, sys.init_q, jp.zeros(sys.qd_size()))
 
-    def fn(xd):
-      qd = jp.zeros(sys.qd_size()).at[0].set(xd)
-      state = init_state.replace(qd=qd)
-      for _ in range(10):
-        state = jax.jit(pipeline.step)(sys, state, None)
-      return state.qd[0]
+        def fn(xd):
+            qd = jp.zeros(sys.qd_size()).at[0].set(xd)
+            state = init_state.replace(qd=qd)
+            for _ in range(10):
+                state = jax.jit(pipeline.step)(sys, state, None)
+            return state.qd[0]
 
-    grad = jax.grad(fn)(-1.0)
-    self.assertFalse(np.isnan(grad))
+        grad = jax.grad(fn)(-1.0)
+        self.assertFalse(np.isnan(grad))
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

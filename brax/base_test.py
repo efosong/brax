@@ -22,28 +22,28 @@ import numpy as np
 
 class BaseTest(absltest.TestCase):
 
-  def test_write_mass_array(self):
-    sys = test_utils.load_fixture('ant.xml')
-    rng = jax.random.PRNGKey(0)
-    noise = jax.random.uniform(rng, (sys.link.inertia.mass.shape[0],))
-    new_mass = sys.link.inertia.mass + noise
+    def test_write_mass_array(self):
+        sys = test_utils.load_fixture("ant.xml")
+        rng = jax.random.PRNGKey(0)
+        noise = jax.random.uniform(rng, (sys.link.inertia.mass.shape[0],))
+        new_mass = sys.link.inertia.mass + noise
 
-    sys_w = sys.tree_replace({'link.inertia.mass': new_mass})
-    np.testing.assert_array_equal(sys_w.link.inertia.mass, new_mass)
+        sys_w = sys.tree_replace({"link.inertia.mass": new_mass})
+        np.testing.assert_array_equal(sys_w.link.inertia.mass, new_mass)
 
-  def test_write_mass_value(self):
-    sys = test_utils.load_fixture('ant.xml')
-    sys_w = sys.tree_replace({'link.inertia.mass': 1.0})
-    self.assertEqual(sys_w.link.inertia.mass, 1.0)
+    def test_write_mass_value(self):
+        sys = test_utils.load_fixture("ant.xml")
+        sys_w = sys.tree_replace({"link.inertia.mass": 1.0})
+        self.assertEqual(sys_w.link.inertia.mass, 1.0)
 
-  def test_write_array(self):
-    sys = test_utils.load_fixture('ant.xml')
-    np.random.seed(0)
+    def test_write_array(self):
+        sys = test_utils.load_fixture("ant.xml")
+        np.random.seed(0)
 
-    expected = np.random.uniform(sys.elasticity.shape)
-    sys_w = sys.tree_replace({'elasticity': expected})
-    np.testing.assert_array_equal(sys_w.elasticity, expected)
+        expected = np.random.uniform(sys.elasticity.shape)
+        sys_w = sys.tree_replace({"elasticity": expected})
+        np.testing.assert_array_equal(sys_w.elasticity, expected)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

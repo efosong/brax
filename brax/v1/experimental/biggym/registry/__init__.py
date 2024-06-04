@@ -16,15 +16,15 @@
 
 # keep alphabetical ordering
 REGISTRIES = [
-    'jump',
-    'proant',
-    'ant',
+    "jump",
+    "proant",
+    "ant",
 ]
 
 
 def get_comp_name(registry_name: str, comp_name: str):
-  return f'{registry_name}__{comp_name}'
+    return f"{registry_name}__{comp_name}"
 
 
 def get_env_name(registry_name: str, env_name: str):
-  return f'{registry_name}__{env_name}'
+    return f"{registry_name}__{env_name}"

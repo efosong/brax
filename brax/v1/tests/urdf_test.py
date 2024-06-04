@@ -67,21 +67,22 @@ _TEST_XML = """
 
 class UrdfTest(absltest.TestCase):
 
-  def test_build(self):
-    m = urdf.UrdfConverter(_TEST_XML, add_collision_pairs=True)
-    # Sanity check.
-    config = m.config
-    self.assertEqual(len(config.bodies), 2)
-    self.assertEqual(config.bodies[0].name, 'parent_link')
-    self.assertEqual(config.bodies[1].name, 'child_link')
-    self.assertEqual(len(config.joints), 1)
-    self.assertEqual(config.joints[0].name, 'test_joint')
-    self.assertEqual(config.joints[0].angle_limit[0].min, 0)
-    self.assertEqual(config.joints[0].angle_limit[0].max, 1)
-    self.assertEqual(len(config.actuators), 1)
-    self.assertEqual(config.actuators[0].name, 'test_joint')
-    self.assertEqual(config.bodies[0].mass, 1.0)
-    self.assertEqual(config.bodies[1].mass, 2.0)
+    def test_build(self):
+        m = urdf.UrdfConverter(_TEST_XML, add_collision_pairs=True)
+        # Sanity check.
+        config = m.config
+        self.assertEqual(len(config.bodies), 2)
+        self.assertEqual(config.bodies[0].name, "parent_link")
+        self.assertEqual(config.bodies[1].name, "child_link")
+        self.assertEqual(len(config.joints), 1)
+        self.assertEqual(config.joints[0].name, "test_joint")
+        self.assertEqual(config.joints[0].angle_limit[0].min, 0)
+        self.assertEqual(config.joints[0].angle_limit[0].max, 1)
+        self.assertEqual(len(config.actuators), 1)
+        self.assertEqual(config.actuators[0].name, "test_joint")
+        self.assertEqual(config.bodies[0].mass, 1.0)
+        self.assertEqual(config.bodies[1].mass, 2.0)
 
-if __name__ == '__main__':
-  absltest.main()
+
+if __name__ == "__main__":
+    absltest.main()

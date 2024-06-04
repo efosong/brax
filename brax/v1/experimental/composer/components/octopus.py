@@ -15,7 +15,7 @@
 """Octopus."""
 from brax.v1.experimental.composer.components.common import upright_term_fn
 
-ROOT = 'octopus'
+ROOT = "octopus"
 
 SYSTEM_CONFIG = """
 bodies {
@@ -1498,21 +1498,22 @@ actuators {
 }
 """
 
-COLLIDES = ('octopus', 'octopus_body', 'octopus_0_B')
+COLLIDES = ("octopus", "octopus_body", "octopus_0_B")
 for i in range(8):
-  COLLIDES = (
-      f'octopus_0_{i}_B',
-      f'octopus_0_{i}_0_B',
-      f'octopus_0_{i}_0_0_B',
-  )
+    COLLIDES = (
+        f"octopus_0_{i}_B",
+        f"octopus_0_{i}_0_B",
+        f"octopus_0_{i}_0_0_B",
+    )
 
-DEFAULT_OBSERVERS = ('root_z_joints',)
+DEFAULT_OBSERVERS = ("root_z_joints",)
 
 
 def get_specs():
-  return dict(
-      message_str=SYSTEM_CONFIG,
-      collides=COLLIDES,
-      root=ROOT,
-      term_fn=upright_term_fn,
-      observers=DEFAULT_OBSERVERS)
+    return dict(
+        message_str=SYSTEM_CONFIG,
+        collides=COLLIDES,
+        root=ROOT,
+        term_fn=upright_term_fn,
+        observers=DEFAULT_OBSERVERS,
+    )

@@ -19,34 +19,29 @@ from brax.v1.envs import ant
 from brax.v1.experimental.composer import component_editor
 from brax.v1.experimental.composer.components import common
 
-COLLIDES = ('$ Torso', '$ Body 4', '$ Body 7', '$ Body 10', '$ Body 13')
+COLLIDES = ("$ Torso", "$ Body 4", "$ Body 7", "$ Body 10", "$ Body 13")
 
-ROOT = '$ Torso'
+ROOT = "$ Torso"
 
-DEFAULT_OBSERVERS = ('root_z_joints', 'cfrc')
+DEFAULT_OBSERVERS = ("root_z_joints", "cfrc")
 
 
-def term_fn(done, sys, qp: brax.QP, info: brax.Info, component,
-            **unused_kwargs):
-  """Termination."""
-  done = common.height_term_fn(
-      done,
-      sys,
-      qp,
-      info,
-      component,
-      max_height=1.0,
-      min_height=0.2,
-      **unused_kwargs)
-  done = common.upright_term_fn(done, sys, qp, info, component, **unused_kwargs)
-  return done
+def term_fn(done, sys, qp: brax.QP, info: brax.Info, component, **unused_kwargs):
+    """Termination."""
+    done = common.height_term_fn(
+        done, sys, qp, info, component, max_height=1.0, min_height=0.2, **unused_kwargs
+    )
+    done = common.upright_term_fn(done, sys, qp, info, component, **unused_kwargs)
+    return done
 
 
 def get_specs():
-  return dict(
-      message_str=component_editor.filter_message_str(ant._SYSTEM_CONFIG_SPRING,
-                                                      'Ground'),
-      collides=COLLIDES,
-      root=ROOT,
-      term_fn=term_fn,
-      observers=DEFAULT_OBSERVERS)
+    return dict(
+        message_str=component_editor.filter_message_str(
+            ant._SYSTEM_CONFIG_SPRING, "Ground"
+        ),
+        collides=COLLIDES,
+        root=ROOT,
+        term_fn=term_fn,
+        observers=DEFAULT_OBSERVERS,
+    )

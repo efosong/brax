@@ -26,23 +26,23 @@ import numpy as np
 
 class MassTest(parameterized.TestCase):
 
-  @parameterized.parameters(
-      ('ant.xml',),
-      ('triple_pendulum.xml',),
-      ('humanoid.xml',),
-      ('half_cheetah.xml',),
-  )
-  def test_matrix(self, xml_file):
-    """Test mass matrix calculation."""
-    sys = test_utils.load_fixture(xml_file)
-    model = test_utils.load_fixture_mujoco(xml_file)
-    mj_mass_mx = np.zeros((sys.qd_size(), sys.qd_size()))
+    @parameterized.parameters(
+        ("ant.xml",),
+        ("triple_pendulum.xml",),
+        ("humanoid.xml",),
+        ("half_cheetah.xml",),
+    )
+    def test_matrix(self, xml_file):
+        """Test mass matrix calculation."""
+        sys = test_utils.load_fixture(xml_file)
+        model = test_utils.load_fixture_mujoco(xml_file)
+        mj_mass_mx = np.zeros((sys.qd_size(), sys.qd_size()))
 
-    for mj_prev, mj_next in test_utils.sample_mujoco_states(xml_file):
-      state = jax.jit(pipeline.init)(sys, mj_prev.qpos, mj_prev.qvel)
-      mujoco.mj_fullM(model, mj_mass_mx, mj_next.qM)
-      np.testing.assert_almost_equal(state.mass_mx, mj_mass_mx, 5)
+        for mj_prev, mj_next in test_utils.sample_mujoco_states(xml_file):
+            state = jax.jit(pipeline.init)(sys, mj_prev.qpos, mj_prev.qvel)
+            mujoco.mj_fullM(model, mj_mass_mx, mj_next.qM)
+            np.testing.assert_almost_equal(state.mass_mx, mj_mass_mx, 5)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

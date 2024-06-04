@@ -13,20 +13,21 @@
 # limitations under the License.
 
 """Example: a Component + env rewards."""
-AUTHORS = ('Shixiang Shane Gu',)
-CONTACTS = ('shanegu@google.com',)
-AFFILIATIONS = ('google.com',)
-DESCRIPTIONS = ('ant with different number of legs running',)
+AUTHORS = ("Shixiang Shane Gu",)
+CONTACTS = ("shanegu@google.com",)
+AFFILIATIONS = ("google.com",)
+DESCRIPTIONS = ("ant with different number of legs running",)
 
 ENVS = dict(
     run=dict(
-        module='ant:Run',
-        tracks=('rl',),
-    ),)
+        module="ant:Run",
+        tracks=("rl",),
+    ),
+)
 
 COMPONENTS = dict(
     ant=dict(
-        module='ant',
-        tracks=('race', 'race_ma', 'sumo', 'onigokko_predator',
-                'onigokko_prey'),
-    ),)
+        module="ant",
+        tracks=("race", "race_ma", "sumo", "onigokko_predator", "onigokko_prey"),
+    ),
+)

@@ -20,86 +20,101 @@ from brax.v1.experimental.composer.observers import SimObserver as so
 
 
 def get_task_env_name(task_name: str, comp_name: str):
-  return f'{task_name}__{comp_name}'
+    return f"{task_name}__{comp_name}"
 
 
 def get_match_env_name(task_name: str, comp1: str, comp2):
-  return f'match_{task_name}__{comp1}__{comp2}'
+    return f"match_{task_name}__{comp1}__{comp2}"
 
 
-def race(component: str, pos: Tuple[float, float, float] = (0, 0, 0), **component_params):
-  return dict(
-      components=dict(
-          agent1=dict(
-              component=component,
-              component_params=component_params,
-              pos=pos,
-              reward_fns=dict(
-                  run=dict(
-                      reward_type=reward_functions.state_reward,
-                      obs=lambda x: so('body', 'vel', x['root'], indices=(0,)),
-                      scale=-1,
-                  )),
-          ),),
-      global_options=dict(dt=0.02, substeps=16),
-  )
+def race(
+    component: str, pos: Tuple[float, float, float] = (0, 0, 0), **component_params
+):
+    return dict(
+        components=dict(
+            agent1=dict(
+                component=component,
+                component_params=component_params,
+                pos=pos,
+                reward_fns=dict(
+                    run=dict(
+                        reward_type=reward_functions.state_reward,
+                        obs=lambda x: so("body", "vel", x["root"], indices=(0,)),
+                        scale=-1,
+                    )
+                ),
+            ),
+        ),
+        global_options=dict(dt=0.02, substeps=16),
+    )
 
 
-def race_ma(component: str,
-            opponent: str = 'ant',
-            opponent_params: Dict[str, Any] = None,
-            **component_params):
-  """Two agents racing."""
-  opponent_params = opponent_params or {}
-  agent1_config = race(component, pos=(0, 1.5, 0), **component_params)
-  agent2_config = race(opponent, pos=(0, -1.5, 0), **opponent_params)
-  agent1_config['components']['agent2'] = agent2_config['components']['agent1']
-  agent1_config['agent_groups'] = {
-      k: dict(reward_agents=(k,)) for k in ['agent1', 'agent2']
-  }
-  return agent1_config
+def race_ma(
+    component: str,
+    opponent: str = "ant",
+    opponent_params: Dict[str, Any] = None,
+    **component_params,
+):
+    """Two agents racing."""
+    opponent_params = opponent_params or {}
+    agent1_config = race(component, pos=(0, 1.5, 0), **component_params)
+    agent2_config = race(opponent, pos=(0, -1.5, 0), **opponent_params)
+    agent1_config["components"]["agent2"] = agent2_config["components"]["agent1"]
+    agent1_config["agent_groups"] = {
+        k: dict(reward_agents=(k,)) for k in ["agent1", "agent2"]
+    }
+    return agent1_config
 
 
-def onigokko_prey(component: str,
-                  opponent: str = 'ant',
-                  opponent_params: Dict[str, Any] = None,
-                  **component_params):
-  """Agent needs to escape from another agent."""
-  opponent_params = opponent_params or {}
-  return ma_descs.create_desc(
-      main_agent=component,
-      main_agent_params=component_params,
-      other_agent=opponent,
-      other_agent_params=opponent_params,
-      task='chase')
+def onigokko_prey(
+    component: str,
+    opponent: str = "ant",
+    opponent_params: Dict[str, Any] = None,
+    **component_params,
+):
+    """Agent needs to escape from another agent."""
+    opponent_params = opponent_params or {}
+    return ma_descs.create_desc(
+        main_agent=component,
+        main_agent_params=component_params,
+        other_agent=opponent,
+        other_agent_params=opponent_params,
+        task="chase",
+    )
 
 
-def onigokko_predator(component: str,
-                      opponent: str = 'ant',
-                      opponent_params: Dict[str, Any] = None,
-                      **component_params):
-  """Agent needs to catch another agent."""
-  opponent_params = opponent_params or {}
-  return ma_descs.create_desc(
-      main_agent=opponent,
-      main_agent_params=opponent_params,
-      other_agent=component,
-      other_agent_params=component_params,
-      task='chase')
+def onigokko_predator(
+    component: str,
+    opponent: str = "ant",
+    opponent_params: Dict[str, Any] = None,
+    **component_params,
+):
+    """Agent needs to catch another agent."""
+    opponent_params = opponent_params or {}
+    return ma_descs.create_desc(
+        main_agent=opponent,
+        main_agent_params=opponent_params,
+        other_agent=component,
+        other_agent_params=component_params,
+        task="chase",
+    )
 
 
-def sumo(component: str,
-         opponent: str = 'ant',
-         opponent_params: Dict[str, Any] = None,
-         **component_params):
-  """Two agents sumoing."""
-  opponent_params = opponent_params or {}
-  return ma_descs.create_desc(
-      main_agent=component,
-      main_agent_params=component_params,
-      other_agent=opponent,
-      other_agent_params=opponent_params,
-      task='sumo')
+def sumo(
+    component: str,
+    opponent: str = "ant",
+    opponent_params: Dict[str, Any] = None,
+    **component_params,
+):
+    """Two agents sumoing."""
+    opponent_params = opponent_params or {}
+    return ma_descs.create_desc(
+        main_agent=component,
+        main_agent_params=component_params,
+        other_agent=opponent,
+        other_agent_params=opponent_params,
+        task="sumo",
+    )
 
 
 TASKS = dict(
@@ -110,5 +125,5 @@ TASKS = dict(
     onigokko_prey=onigokko_prey,
 )
 
-SYMMETRIC_MA_TASKS = ('race_ma', 'sumo')
-ASYMMETRIC_MA_TASKS = ('onigokko_prey', 'onigokko_predator')
+SYMMETRIC_MA_TASKS = ("race_ma", "sumo")
+ASYMMETRIC_MA_TASKS = ("onigokko_prey", "onigokko_predator")

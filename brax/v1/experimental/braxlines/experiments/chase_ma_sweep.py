@@ -18,12 +18,12 @@ import itertools
 from brax.v1.experimental.braxlines.experiments import defaults
 
 seed = 0
-comps = [('ant', {}), ('pro_ant', dict(num_legs=[2, 6]))]
+comps = [("ant", {}), ("pro_ant", dict(num_legs=[2, 6]))]
 
-AGENT_MODULE = 'brax.experimental.composer.train'
+AGENT_MODULE = "brax.experimental.composer.train"
 CONFIG = [
     dict(
-        env_name='chase',
+        env_name="chase",
         env_params=dict(
             main_agent=[comp1[0]],
             main_agent_params=comp1[1],
@@ -32,6 +32,7 @@ CONFIG = [
             num_agents=list(range(2, 5)),
         ),
         seed=seed,
-        ppo_params=defaults.get_ppo_params(comp1[0], 3, default='ant'))
+        ppo_params=defaults.get_ppo_params(comp1[0], 3, default="ant"),
+    )
     for comp1, comp2 in itertools.product(comps, comps)
 ]

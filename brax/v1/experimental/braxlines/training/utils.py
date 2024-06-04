@@ -17,7 +17,6 @@ from jax import numpy as jnp
 
 
 def zero_fn(params, obs: jnp.ndarray, rng: jnp.ndarray, action_size: int):
-  """Output zero actions."""
-  del params, rng
-  return jnp.zeros(obs.shape[:-1] + (action_size,))
-
+    """Output zero actions."""
+    del params, rng
+    return jnp.zeros(obs.shape[:-1] + (action_size,))

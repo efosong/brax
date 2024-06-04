@@ -23,23 +23,20 @@ from jax import numpy as jp
 
 
 def integrate_xdv(sys: System, xd: Motion, xdv: Motion) -> Motion:
-  """Updates velocity by applying delta-velocity.
+    """Updates velocity by applying delta-velocity.
 
-  Args:
-    sys: System to forward propagate
-    xd: velocity
-    xdv: delta-velocity
+    Args:
+      sys: System to forward propagate
+      xd: velocity
+      xdv: delta-velocity
 
-  Returns:
-    xd: updated velocity
-  """
-  damp = Motion(vel=sys.vel_damping, ang=sys.ang_damping)
-  xd = (
-      jax.tree.map(lambda d, x: jp.exp(d * sys.opt.timestep) * x, damp, xd)
-      + xdv
-  )
+    Returns:
+      xd: updated velocity
+    """
+    damp = Motion(vel=sys.vel_damping, ang=sys.ang_damping)
+    xd = jax.tree.map(lambda d, x: jp.exp(d * sys.opt.timestep) * x, damp, xd) + xdv
 
-  return xd
+    return xd
 
 
 def integrate_xdd(
@@ -48,57 +45,57 @@ def integrate_xdd(
     xd: Motion,
     xdd: Motion,
 ) -> Tuple[Transform, Motion]:
-  """Updates position and velocity for a system time step given acceleration.
+    """Updates position and velocity for a system time step given acceleration.
 
-  Args:
-    sys: System to forward propagate
-    x: position
-    xd: velocity
-    xdd: acceleration
+    Args:
+      sys: System to forward propagate
+      x: position
+      xd: velocity
+      xdd: acceleration
 
-  Returns:
-    x: updated position
-    xd: updated velocity
-  """
+    Returns:
+      x: updated position
+      xd: updated velocity
+    """
 
-  xd = xd + xdd * sys.opt.timestep
-  damp = Motion(vel=sys.vel_damping, ang=sys.ang_damping)
-  xd = jax.tree.map(lambda d, x: jp.exp(d * sys.opt.timestep) * x, damp, xd)
+    xd = xd + xdd * sys.opt.timestep
+    damp = Motion(vel=sys.vel_damping, ang=sys.ang_damping)
+    xd = jax.tree.map(lambda d, x: jp.exp(d * sys.opt.timestep) * x, damp, xd)
 
-  @jax.vmap
-  def op(x, xd):
-    pos = x.pos + xd.vel * sys.opt.timestep
-    rot_at_ang_quat = math.ang_to_quat(xd.ang) * 0.5 * sys.opt.timestep
-    rot, _ = math.normalize(x.rot + math.quat_mul(rot_at_ang_quat, x.rot))
-    return Transform(pos=pos, rot=rot)
+    @jax.vmap
+    def op(x, xd):
+        pos = x.pos + xd.vel * sys.opt.timestep
+        rot_at_ang_quat = math.ang_to_quat(xd.ang) * 0.5 * sys.opt.timestep
+        rot, _ = math.normalize(x.rot + math.quat_mul(rot_at_ang_quat, x.rot))
+        return Transform(pos=pos, rot=rot)
 
-  x = op(x, xd)
+    x = op(x, xd)
 
-  return x, xd
+    return x, xd
 
 
 def project_xd(sys: System, x: Transform, x_prev: Transform) -> Motion:
-  """Performs the position based dynamics velocity projection step.
+    """Performs the position based dynamics velocity projection step.
 
-  The velocity and angular velocity must respect the spatial and quaternion
-  distance (respectively) between x and x_prev.
+    The velocity and angular velocity must respect the spatial and quaternion
+    distance (respectively) between x and x_prev.
 
-  Args:
-    sys: The system definition
-    x: The current transform
-    x_prev: The transform at the previous step
+    Args:
+      sys: The system definition
+      x: The current transform
+      x_prev: The transform at the previous step
 
-  Returns:
-    New state with velocity pinned to respect distance traveled since x_prev
-  """
+    Returns:
+      New state with velocity pinned to respect distance traveled since x_prev
+    """
 
-  @jax.vmap
-  def op(x, x_prev):
-    vel = (x.pos - x_prev.pos) / sys.opt.timestep
-    dq = math.relative_quat(x_prev.rot, x.rot)
-    ang = 2.0 * dq[1:] / sys.opt.timestep
-    scale = jp.where(dq[0] >= 0.0, 1.0, -1.0)
-    ang = scale * ang
-    return Motion(vel=vel, ang=ang)
+    @jax.vmap
+    def op(x, x_prev):
+        vel = (x.pos - x_prev.pos) / sys.opt.timestep
+        dq = math.relative_quat(x_prev.rot, x.rot)
+        ang = 2.0 * dq[1:] / sys.opt.timestep
+        scale = jp.where(dq[0] >= 0.0, 1.0, -1.0)
+        ang = scale * ang
+        return Motion(vel=vel, ang=ang)
 
-  return op(x, x_prev)
+    return op(x, x_prev)

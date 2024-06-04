@@ -17,19 +17,22 @@ from brax.v1.experimental.biggym import registry
 
 
 def Run(num_legs: int = 4):
-  return dict(
-      components=dict(
-          agent1=dict(
-              component=registry.get_comp_name('proant', 'ant'),
-              component_params=dict(num_legs=num_legs),
-              pos=(0, 0, 0),
-              reward_fns=dict(
-                  goal=dict(
-                      reward_type='root_goal',
-                      sdcomp='vel',
-                      indices=(0, 1),
-                      offset=5,
-                      target_goal=(4, 0))),
-          ),),
-      global_options=dict(dt=0.02, substeps=16),
-  )
+    return dict(
+        components=dict(
+            agent1=dict(
+                component=registry.get_comp_name("proant", "ant"),
+                component_params=dict(num_legs=num_legs),
+                pos=(0, 0, 0),
+                reward_fns=dict(
+                    goal=dict(
+                        reward_type="root_goal",
+                        sdcomp="vel",
+                        indices=(0, 1),
+                        offset=5,
+                        target_goal=(4, 0),
+                    )
+                ),
+            ),
+        ),
+        global_options=dict(dt=0.02, substeps=16),
+    )

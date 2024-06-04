@@ -14,9 +14,9 @@
 
 """Ground."""
 
-COLLIDES = ('Ground',)
+COLLIDES = ("Ground",)
 
-ROOT = 'Ground'
+ROOT = "Ground"
 
 DEFAULT_OBSERVERS = ()
 
@@ -36,9 +36,10 @@ bodies {
 
 
 def get_specs():
-  return dict(
-      message_str=SYSTEM_CONFIG,
-      collides=COLLIDES,
-      root=ROOT,
-      term_fn=TERM_FN,
-      observers=DEFAULT_OBSERVERS)
+    return dict(
+        message_str=SYSTEM_CONFIG,
+        collides=COLLIDES,
+        root=ROOT,
+        term_fn=TERM_FN,
+        observers=DEFAULT_OBSERVERS,
+    )

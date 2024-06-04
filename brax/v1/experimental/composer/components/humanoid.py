@@ -20,21 +20,22 @@ from brax.v1.experimental.composer import component_editor
 from brax.v1.experimental.composer.components import common
 
 
-COLLIDES = ('torso', 'left_shin', 'right_shin')
+COLLIDES = ("torso", "left_shin", "right_shin")
 
-ROOT = 'torso'
+ROOT = "torso"
 
-DEFAULT_OBSERVERS = ('root_z_joints',)
+DEFAULT_OBSERVERS = ("root_z_joints",)
 
-TERM_FN = functools.partial(
-    common.height_term_fn, max_height=2.1, min_height=0.7)
+TERM_FN = functools.partial(common.height_term_fn, max_height=2.1, min_height=0.7)
 
 
 def get_specs():
-  return dict(
-      message_str=component_editor.filter_message_str(
-          humanoid._SYSTEM_CONFIG_SPRING, 'floor'),
-      collides=COLLIDES,
-      root=ROOT,
-      term_fn=TERM_FN,
-      observers=DEFAULT_OBSERVERS)
+    return dict(
+        message_str=component_editor.filter_message_str(
+            humanoid._SYSTEM_CONFIG_SPRING, "floor"
+        ),
+        collides=COLLIDES,
+        root=ROOT,
+        term_fn=TERM_FN,
+        observers=DEFAULT_OBSERVERS,
+    )

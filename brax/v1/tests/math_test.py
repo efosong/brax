@@ -20,25 +20,26 @@ from brax.v1 import math
 
 
 class RotateTest(absltest.TestCase):
-  """Tests math.rotate."""
+    """Tests math.rotate."""
 
-  def test_rotate(self):
-    vec = jp.array([0, 0, 1])
-    quat = math.euler_to_quat(jp.array([0, 45, 0]))
-    self.assertSequenceAlmostEqual(math.rotate(vec, quat),
-                                   [1. / jp.sqrt(2), 0, 1. / jp.sqrt(2)])
+    def test_rotate(self):
+        vec = jp.array([0, 0, 1])
+        quat = math.euler_to_quat(jp.array([0, 45, 0]))
+        self.assertSequenceAlmostEqual(
+            math.rotate(vec, quat), [1.0 / jp.sqrt(2), 0, 1.0 / jp.sqrt(2)]
+        )
 
-  def test_rotate_identity(self):
-    vec = jp.ones(3)
-    quat = jp.array([1, 0, 0, 0])
-    self.assertSequenceAlmostEqual(math.rotate(vec, quat), vec)
+    def test_rotate_identity(self):
+        vec = jp.ones(3)
+        quat = jp.array([1, 0, 0, 0])
+        self.assertSequenceAlmostEqual(math.rotate(vec, quat), vec)
 
-  def test_rotate_bad_input_shape(self):
-    vec = jp.ones((3, 3))
-    quat = jp.array([1, 0, 0, 0])
-    with self.assertRaises(AssertionError):
-      math.rotate(vec, quat)
+    def test_rotate_bad_input_shape(self):
+        vec = jp.ones((3, 3))
+        quat = jp.array([1, 0, 0, 0])
+        with self.assertRaises(AssertionError):
+            math.rotate(vec, quat)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

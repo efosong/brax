@@ -41,243 +41,270 @@ from jax import numpy as jnp
 
 
 class Observer(abc.ABC):
-  """Observer."""
+    """Observer."""
 
-  def __init__(self, name: str = None, indices: Tuple[int] = None):
-    assert name
-    self.name = name
-    if isinstance(indices, int):
-      indices = (indices,)
-    self.indices = indices
-    self.initialized = False
+    def __init__(self, name: str = None, indices: Tuple[int] = None):
+        assert name
+        self.name = name
+        if isinstance(indices, int):
+            indices = (indices,)
+        self.indices = indices
+        self.initialized = False
 
-  def initialize(self, sys):
-    del sys
-    self.initialized = True
+    def initialize(self, sys):
+        del sys
+        self.initialized = True
 
-  def index_obs(self, obs: jnp.ndarray):
-    if self.indices is not None:
-      obs = obs[..., self.indices]
-    return obs
+    def index_obs(self, obs: jnp.ndarray):
+        if self.indices is not None:
+            obs = obs[..., self.indices]
+        return obs
 
-  def get_obs(self, sys, qp: brax.QP, info: brax.Info,
-              cached_obs_dict: Dict[str, jnp.ndarray], component: Dict[str,
-                                                                       Any]):
-    if not self.initialized:
-      self.initialize(sys)
-    if self.name in cached_obs_dict:
-      return cached_obs_dict[self.name].copy()
-    obs = self._get_obs(sys, qp, info, cached_obs_dict, component)
-    obs = self.index_obs(obs)
-    return obs
+    def get_obs(
+        self,
+        sys,
+        qp: brax.QP,
+        info: brax.Info,
+        cached_obs_dict: Dict[str, jnp.ndarray],
+        component: Dict[str, Any],
+    ):
+        if not self.initialized:
+            self.initialize(sys)
+        if self.name in cached_obs_dict:
+            return cached_obs_dict[self.name].copy()
+        obs = self._get_obs(sys, qp, info, cached_obs_dict, component)
+        obs = self.index_obs(obs)
+        return obs
 
-  @abc.abstractmethod
-  def _get_obs(self, sys, qp: brax.QP, info: brax.Info,
-               cached_obs_dict: Dict[str, jnp.ndarray], component: Dict[str,
-                                                                        Any]):
-    raise NotImplementedError
+    @abc.abstractmethod
+    def _get_obs(
+        self,
+        sys,
+        qp: brax.QP,
+        info: brax.Info,
+        cached_obs_dict: Dict[str, jnp.ndarray],
+        component: Dict[str, Any],
+    ):
+        raise NotImplementedError
 
-  def __str__(self) -> str:
-    return self.name
+    def __str__(self) -> str:
+        return self.name
 
-  def __repr__(self) -> str:
-    return self.name
+    def __repr__(self) -> str:
+        return self.name
 
 
 LAMBDA_FN_MAPPING = {
-    '-': lambda x, y: x - y,
+    "-": lambda x, y: x - y,
 }
 
 
 class LambdaObserver(Observer):
-  """LambdaObserver."""
+    """LambdaObserver."""
 
-  def __init__(self, observers: List[Observer], fn, **kwargs):
-    self.observers = observers
-    if isinstance(fn, str):
-      fn = LAMBDA_FN_MAPPING[fn]
-    self.fn = fn
-    super().__init__(**kwargs)
+    def __init__(self, observers: List[Observer], fn, **kwargs):
+        self.observers = observers
+        if isinstance(fn, str):
+            fn = LAMBDA_FN_MAPPING[fn]
+        self.fn = fn
+        super().__init__(**kwargs)
 
-  def initialize(self, sys):
-    for o in self.observers:
-      o.initialize(sys)
-    super().initialize(sys)
+    def initialize(self, sys):
+        for o in self.observers:
+            o.initialize(sys)
+        super().initialize(sys)
 
-  def _get_obs(self, sys, qp: brax.QP, info: brax.Info,
-               cached_obs_dict: Dict[str, jnp.ndarray], component: Dict[str,
-                                                                        Any]):
-    obses = [
-        o.get_obs(sys, qp, info, cached_obs_dict, component)
-        for o in self.observers
-    ]
-    return self.fn(*obses)
+    def _get_obs(
+        self,
+        sys,
+        qp: brax.QP,
+        info: brax.Info,
+        cached_obs_dict: Dict[str, jnp.ndarray],
+        component: Dict[str, Any],
+    ):
+        obses = [
+            o.get_obs(sys, qp, info, cached_obs_dict, component) for o in self.observers
+        ]
+        return self.fn(*obses)
 
 
 class SimObserver(Observer):
-  """SimObserver."""
+    """SimObserver."""
 
-  def __init__(self,
-               sdtype: str = 'body',
-               sdcomp: str = 'pos',
-               sdname: str = '',
-               comp_name: str = '',
-               name: str = None,
-               indices: Tuple[int, ...] = None,
-               **kwargs):
-    sdname = component_editor.concat_name(sdname, comp_name)
-    if not name:
-      name = f'{sdtype}_{sdcomp}:{sdname}'
-      if indices:
-        name = f'{name}[{indices}]'
-    self.sdtype = sdtype
-    self.sdcomp = sdcomp
-    self.sdname = sdname
-    super().__init__(name=name, indices=indices, **kwargs)
+    def __init__(
+        self,
+        sdtype: str = "body",
+        sdcomp: str = "pos",
+        sdname: str = "",
+        comp_name: str = "",
+        name: str = None,
+        indices: Tuple[int, ...] = None,
+        **kwargs,
+    ):
+        sdname = component_editor.concat_name(sdname, comp_name)
+        if not name:
+            name = f"{sdtype}_{sdcomp}:{sdname}"
+            if indices:
+                name = f"{name}[{indices}]"
+        self.sdtype = sdtype
+        self.sdcomp = sdcomp
+        self.sdname = sdname
+        super().__init__(name=name, indices=indices, **kwargs)
 
-  def initialize(self, sys):
-    self.sim_indices, self.sim_info, self.sim_mask = sim_utils.names2indices(
-        sys.config, names=[self.sdname], datatype=self.sdtype)
-    self.sim_indices = self.sim_indices[0]  # list -> int
-    super().initialize(sys)
+    def initialize(self, sys):
+        self.sim_indices, self.sim_info, self.sim_mask = sim_utils.names2indices(
+            sys.config, names=[self.sdname], datatype=self.sdtype
+        )
+        self.sim_indices = self.sim_indices[0]  # list -> int
+        super().initialize(sys)
 
-  def _get_obs(self,
-               sys,
-               qp: brax.QP,
-               info: brax.Info,
-               cached_obs_dict: Dict[str, jnp.ndarray],
-               component: Dict[str, Any] = None):
-    """Get observation."""
-    if self.sdtype == 'body':
-      assert self.sdcomp in ('pos', 'rot', 'ang', 'vel'), self.sdcomp
-      obs = getattr(qp, self.sdcomp)[self.sim_indices]
-    elif self.sdtype == 'joint':
-      joint_obs_dict = sim_utils.get_joint_value(sys, qp, self.sim_info)
-      obs = list(joint_obs_dict.values())[0]
-    elif self.sdtype == 'contact':
-      assert self.sdcomp in ('vel', 'ang'), self.sdcomp
-      v = getattr(info.contact, self.sdcomp)[self.sim_indices]
-      v = jnp.clip(v, -1, 1)
-      obs = jnp.reshape(v, v.shape[:-2] + (-1,))
-    else:
-      raise NotImplementedError(self.sdtype)
-    return obs
+    def _get_obs(
+        self,
+        sys,
+        qp: brax.QP,
+        info: brax.Info,
+        cached_obs_dict: Dict[str, jnp.ndarray],
+        component: Dict[str, Any] = None,
+    ):
+        """Get observation."""
+        if self.sdtype == "body":
+            assert self.sdcomp in ("pos", "rot", "ang", "vel"), self.sdcomp
+            obs = getattr(qp, self.sdcomp)[self.sim_indices]
+        elif self.sdtype == "joint":
+            joint_obs_dict = sim_utils.get_joint_value(sys, qp, self.sim_info)
+            obs = list(joint_obs_dict.values())[0]
+        elif self.sdtype == "contact":
+            assert self.sdcomp in ("vel", "ang"), self.sdcomp
+            v = getattr(info.contact, self.sdcomp)[self.sim_indices]
+            v = jnp.clip(v, -1, 1)
+            obs = jnp.reshape(v, v.shape[:-2] + (-1,))
+        else:
+            raise NotImplementedError(self.sdtype)
+        return obs
 
 
 def index_preprocess(indices: List[Any], env: Env = None) -> List[int]:
-  """Preprocess indices to a list of ints and a list of str labels."""
-  if indices is None:
-    return None
-  int_indices = []
-  labels = []
-  for index in indices:
-    if isinstance(index, int):
-      int_indices += [index]
-      labels += [f'obs[{index}]']
-    elif isinstance(index, tuple):
-      assert len(index) == 2, 'tuple indexing is of form: (obs_dict_key, index)'
-      key, i = index
-      assert isinstance(env, composer.ComponentEnv), env
-      assert env.observation_size  # ensure env.observer_shapes is set
-      obs_shape = env.observer_shapes
-      assert key in obs_shape, f'{key} not in {tuple(obs_shape.keys())}'
-      int_indices += [obs_shape[key]['start'] + i]
-      labels += [f'{key}[{i}]']
-    else:
-      raise NotImplementedError(index)
-  return int_indices, labels
+    """Preprocess indices to a list of ints and a list of str labels."""
+    if indices is None:
+        return None
+    int_indices = []
+    labels = []
+    for index in indices:
+        if isinstance(index, int):
+            int_indices += [index]
+            labels += [f"obs[{index}]"]
+        elif isinstance(index, tuple):
+            assert len(index) == 2, "tuple indexing is of form: (obs_dict_key, index)"
+            key, i = index
+            assert isinstance(env, composer.ComponentEnv), env
+            assert env.observation_size  # ensure env.observer_shapes is set
+            obs_shape = env.observer_shapes
+            assert key in obs_shape, f"{key} not in {tuple(obs_shape.keys())}"
+            int_indices += [obs_shape[key]["start"] + i]
+            labels += [f"{key}[{i}]"]
+        else:
+            raise NotImplementedError(index)
+    return int_indices, labels
 
 
 def index_obs(obs: jnp.ndarray, indices: List[Any], env: Env = None):
-  """Index observation vector."""
-  int_indices = index_preprocess(indices, env)
-  return obs.take(int_indices, axis=-1)
+    """Index observation vector."""
+    int_indices = index_preprocess(indices, env)
+    return obs.take(int_indices, axis=-1)
 
 
 def initialize_observers(observers: List[Union[Observer, str]], sys):
-  """Initialize observers."""
-  for o in observers:
-    if isinstance(o, Observer):
-      o.initialize(sys)
+    """Initialize observers."""
+    for o in observers:
+        if isinstance(o, Observer):
+            o.initialize(sys)
 
 
-STRING_OBSERVERS = ('qp', 'root_joints', 'root_z_joints', 'cfrc')
+STRING_OBSERVERS = ("qp", "root_joints", "root_z_joints", "cfrc")
 
 
-def get_obs_dict(sys, qp: brax.QP, info: brax.Info, observer: Union[str,
-                                                                    Observer],
-                 cached_obs_dict: Dict[str, jnp.ndarray], component: Dict[str,
-                                                                          Any]):
-  """Observe."""
-  obs_dict = collections.OrderedDict()
-  if isinstance(observer, Observer):
-    obs_dict[observer.name] = observer.get_obs(sys, qp, info, cached_obs_dict,
-                                               component)
-  elif observer == 'qp':
-    # get all positions/orientations/velocities/ang velocities of all bodies
-    bodies = component['bodies']
-    indices = sim_utils.names2indices(sys.config, bodies, 'body')[0]
-    for type_ in ('pos', 'rot', 'vel', 'ang'):
-      for index, b in zip(indices, bodies):
-        v = getattr(qp, type_)[index]
-        key = f'body_{type_}:{b}'
-        obs_dict[key] = v
-  elif observer in ('root_joints', 'root_z_joints'):
-    # get all positions/orientations/velocities/ang velocities of root bodies
-    root = component['root']
-    index = sim_utils.names2indices(sys.config, root, 'body')[0][0]
-    for type_ in ('pos', 'rot', 'vel', 'ang'):
-      v = getattr(qp, type_)[index]
-      if observer == 'root_z_joints' and type_ == 'pos':
-        # remove xy position
-        v = v[2:]
-      obs_dict[f'body_{type_}:{root}'] = v
-    # get all joints
-    joints = component['joints']
-    _, joint_info, _ = sim_utils.names2indices(sys.config, joints, 'joint')
-    joint_obs_dict = sim_utils.get_joint_value(sys, qp, joint_info)
-    obs_dict = collections.OrderedDict(
-        list(obs_dict.items()) + list(joint_obs_dict.items()))
-  elif observer == 'cfrc':
-    # external contact forces:
-    # delta velocity (3,), delta ang (3,) * N bodies in the system
-    bodies = component['bodies']
-    indices = sim_utils.names2indices(sys.config, bodies, 'body')[0]
-    for i, b in zip(indices, bodies):
-      for type_ in ('vel', 'ang'):
-        v = getattr(info.contact, type_)[i]
-        v = jnp.clip(v, -1, 1)
-        v = jnp.reshape(v, v.shape[:-2] + (-1,))
-        key = f'contact_{type_}:{b}'
-        obs_dict[key] = v
-  else:
-    raise NotImplementedError(observer)
-  return obs_dict
+def get_obs_dict(
+    sys,
+    qp: brax.QP,
+    info: brax.Info,
+    observer: Union[str, Observer],
+    cached_obs_dict: Dict[str, jnp.ndarray],
+    component: Dict[str, Any],
+):
+    """Observe."""
+    obs_dict = collections.OrderedDict()
+    if isinstance(observer, Observer):
+        obs_dict[observer.name] = observer.get_obs(
+            sys, qp, info, cached_obs_dict, component
+        )
+    elif observer == "qp":
+        # get all positions/orientations/velocities/ang velocities of all bodies
+        bodies = component["bodies"]
+        indices = sim_utils.names2indices(sys.config, bodies, "body")[0]
+        for type_ in ("pos", "rot", "vel", "ang"):
+            for index, b in zip(indices, bodies):
+                v = getattr(qp, type_)[index]
+                key = f"body_{type_}:{b}"
+                obs_dict[key] = v
+    elif observer in ("root_joints", "root_z_joints"):
+        # get all positions/orientations/velocities/ang velocities of root bodies
+        root = component["root"]
+        index = sim_utils.names2indices(sys.config, root, "body")[0][0]
+        for type_ in ("pos", "rot", "vel", "ang"):
+            v = getattr(qp, type_)[index]
+            if observer == "root_z_joints" and type_ == "pos":
+                # remove xy position
+                v = v[2:]
+            obs_dict[f"body_{type_}:{root}"] = v
+        # get all joints
+        joints = component["joints"]
+        _, joint_info, _ = sim_utils.names2indices(sys.config, joints, "joint")
+        joint_obs_dict = sim_utils.get_joint_value(sys, qp, joint_info)
+        obs_dict = collections.OrderedDict(
+            list(obs_dict.items()) + list(joint_obs_dict.items())
+        )
+    elif observer == "cfrc":
+        # external contact forces:
+        # delta velocity (3,), delta ang (3,) * N bodies in the system
+        bodies = component["bodies"]
+        indices = sim_utils.names2indices(sys.config, bodies, "body")[0]
+        for i, b in zip(indices, bodies):
+            for type_ in ("vel", "ang"):
+                v = getattr(info.contact, type_)[i]
+                v = jnp.clip(v, -1, 1)
+                v = jnp.reshape(v, v.shape[:-2] + (-1,))
+                key = f"contact_{type_}:{b}"
+                obs_dict[key] = v
+    else:
+        raise NotImplementedError(observer)
+    return obs_dict
 
 
-def get_component_observers(component: Dict[str, Any],
-                            observer_type: str = 'qp',
-                            **observer_kwargs):
-  """Get component-based Observers."""
-  del component, observer_kwargs
-  raise NotImplementedError(observer_type)
-
-
-def get_edge_observers(component1: Dict[str, Any],
-                       component2: Dict[str, Any],
-                       observer_type: str = 'root_vec',
-                       **observer_kwargs):
-  """Get edge-based Observers."""
-  if observer_type == 'root_vec':
-    root1 = component1['root']
-    root2 = component2['root']
-    return LambdaObserver(
-        name=f'dist__{root1}__{root2}',
-        fn='-',
-        observers=[
-            SimObserver(sdname=component1['root'], **observer_kwargs),
-            SimObserver(sdname=component2['root'], **observer_kwargs)
-        ],
-    )
-  else:
+def get_component_observers(
+    component: Dict[str, Any], observer_type: str = "qp", **observer_kwargs
+):
+    """Get component-based Observers."""
+    del component, observer_kwargs
     raise NotImplementedError(observer_type)
+
+
+def get_edge_observers(
+    component1: Dict[str, Any],
+    component2: Dict[str, Any],
+    observer_type: str = "root_vec",
+    **observer_kwargs,
+):
+    """Get edge-based Observers."""
+    if observer_type == "root_vec":
+        root1 = component1["root"]
+        root2 = component2["root"]
+        return LambdaObserver(
+            name=f"dist__{root1}__{root2}",
+            fn="-",
+            observers=[
+                SimObserver(sdname=component1["root"], **observer_kwargs),
+                SimObserver(sdname=component2["root"], **observer_kwargs),
+            ],
+        )
+    else:
+        raise NotImplementedError(observer_type)

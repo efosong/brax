@@ -21,12 +21,12 @@ from brax.v1.io.file import File
 
 
 def load_params(path: str) -> Any:
-  with File(path, 'rb') as fin:
-    buf = fin.read()
-  return pickle.loads(buf)
+    with File(path, "rb") as fin:
+        buf = fin.read()
+    return pickle.loads(buf)
 
 
 def save_params(path: str, params: Any):
-  """Saves parameters in Flax format."""
-  with File(path, 'wb') as fout:
-    fout.write(pickle.dumps(params))
+    """Saves parameters in Flax format."""
+    with File(path, "wb") as fout:
+        fout.write(pickle.dumps(params))

@@ -20,66 +20,73 @@ from brax.v1.envs import env
 
 
 class Acrobot(env.Env):
-  """Trains an acrobot to swingup and balance.
+    """Trains an acrobot to swingup and balance.
 
-  Observations:
-    0. Theta 0
-    1. Theta 1
-    2. dTheta 0
-    3. dTheta 1
-  Actions:
-    0. Torque at the elbow joint
-  """
+    Observations:
+      0. Theta 0
+      1. Theta 1
+      2. dTheta 0
+      3. dTheta 1
+    Actions:
+      0. Torque at the elbow joint
+    """
 
-  def __init__(self, legacy_spring=False, **kwargs):
-    config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
-    super().__init__(config=config, **kwargs)
+    def __init__(self, legacy_spring=False, **kwargs):
+        config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
+        super().__init__(config=config, **kwargs)
 
-  def reset(self, rng: jp.ndarray) -> env.State:
-    """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-    qpos = self.sys.default_angle() + jp.random_uniform(
-        rng1, (self.sys.num_joint_dof,), -.01, .01)
-    qvel = jp.random_uniform(rng2, (self.sys.num_joint_dof,), -.01, .01)
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    #    qp = self.sys.default_qp()
-    info = self.sys.info(qp)
-    joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
-    obs = self._get_obs(qp, info, joint_angle, joint_vel)
-    reward, done, zero = jp.zeros(3)
-    metrics = {
-        'dist_penalty': zero,
-        'vel_penalty': zero,
-        'alive_bonus': zero,
-        'r_tot': zero,
-    }
-    return env.State(qp, obs, reward, done, metrics)
+    def reset(self, rng: jp.ndarray) -> env.State:
+        """Resets the environment to an initial state."""
+        rng, rng1, rng2 = jp.random_split(rng, 3)
+        qpos = self.sys.default_angle() + jp.random_uniform(
+            rng1, (self.sys.num_joint_dof,), -0.01, 0.01
+        )
+        qvel = jp.random_uniform(rng2, (self.sys.num_joint_dof,), -0.01, 0.01)
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        #    qp = self.sys.default_qp()
+        info = self.sys.info(qp)
+        joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
+        obs = self._get_obs(qp, info, joint_angle, joint_vel)
+        reward, done, zero = jp.zeros(3)
+        metrics = {
+            "dist_penalty": zero,
+            "vel_penalty": zero,
+            "alive_bonus": zero,
+            "r_tot": zero,
+        }
+        return env.State(qp, obs, reward, done, metrics)
 
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
-    """Run one timestep of the environment's dynamics."""
-    qp, info = self.sys.step(state.qp, action)
-    joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
-    obs = self._get_obs(qp, info, joint_angle, joint_vel)
+    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+        """Run one timestep of the environment's dynamics."""
+        qp, info = self.sys.step(state.qp, action)
+        joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
+        obs = self._get_obs(qp, info, joint_angle, joint_vel)
 
-    alive_bonus = 10.0
-    dist_penalty = joint_angle[0]**2 + joint_angle[1]**2
-    vel_penalty = 1e-3 * (joint_vel[0]**2 + joint_vel[1]**2)
-    r = alive_bonus - dist_penalty - vel_penalty
-    done = jp.zeros(())
+        alive_bonus = 10.0
+        dist_penalty = joint_angle[0] ** 2 + joint_angle[1] ** 2
+        vel_penalty = 1e-3 * (joint_vel[0] ** 2 + joint_vel[1] ** 2)
+        r = alive_bonus - dist_penalty - vel_penalty
+        done = jp.zeros(())
 
-    state.metrics.update(
-        dist_penalty=dist_penalty, vel_penalty=vel_penalty, r_tot=r)
+        state.metrics.update(
+            dist_penalty=dist_penalty, vel_penalty=vel_penalty, r_tot=r
+        )
 
-    return state.replace(qp=qp, obs=obs, reward=r, done=done)
+        return state.replace(qp=qp, obs=obs, reward=r, done=done)
 
-  @property
-  def action_size(self):
-    return 1
+    @property
+    def action_size(self):
+        return 1
 
-  def _get_obs(self, qp: brax.QP, info: brax.Info, joint_angle: jp.ndarray,
-               joint_vel: jp.ndarray) -> jp.ndarray:
-    """Observe acrobot body position and velocities."""
-    return jp.concatenate((joint_angle, joint_vel))
+    def _get_obs(
+        self,
+        qp: brax.QP,
+        info: brax.Info,
+        joint_angle: jp.ndarray,
+        joint_vel: jp.ndarray,
+    ) -> jp.ndarray:
+        """Observe acrobot body position and velocities."""
+        return jp.concatenate((joint_angle, joint_vel))
 
 
 _SYSTEM_CONFIG = """

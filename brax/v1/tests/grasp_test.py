@@ -22,37 +22,109 @@ import jax
 
 class GraspTest(absltest.TestCase):
 
-  def testGrasp(self):
-    env = envs.create('grasp')
-    grasp_action = jp.array([
-     -.3, 0., 0., -1, 0., 0., -1, -0, 0.,  # gripper arm 1
-      .3, 0., 0.,  1, 0., 0.,  1,  0, 0.,     # gripper arm 2
-      .3, 0., 0.,  1, 0., 0.,  1,  0, 0.,      # gripper arm 3
-      .3, 0., 0.,  1, 0., 0.,  1,  0, 0.,      # gripper arm 4
-      0, 0, -1.0           # position action
-      ])
+    def testGrasp(self):
+        env = envs.create("grasp")
+        grasp_action = jp.array(
+            [
+                -0.3,
+                0.0,
+                0.0,
+                -1,
+                0.0,
+                0.0,
+                -1,
+                -0,
+                0.0,  # gripper arm 1
+                0.3,
+                0.0,
+                0.0,
+                1,
+                0.0,
+                0.0,
+                1,
+                0,
+                0.0,  # gripper arm 2
+                0.3,
+                0.0,
+                0.0,
+                1,
+                0.0,
+                0.0,
+                1,
+                0,
+                0.0,  # gripper arm 3
+                0.3,
+                0.0,
+                0.0,
+                1,
+                0.0,
+                0.0,
+                1,
+                0,
+                0.0,  # gripper arm 4
+                0,
+                0,
+                -1.0,  # position action
+            ]
+        )
 
-    def raise_action(i):
-      return jp.array([
-         -.3, 0., 0., -1, 0., 0., -1, -0, 0.,  # gripper arm 1
-          .3, 0., 0.,  1, 0., 0.,  1,  0, 0.,     # gripper arm 2
-          .3, 0., 0.,  1, 0., 0.,  1,  0, 0.,      # gripper arm 3
-          .3, 0., 0.,  1, 0., 0.,  1,  0, 0.,      # gripper arm 4
-        0, 0, -1.0*((250 - i)/250) + -.5*(i/250)           # position action
-      ])
+        def raise_action(i):
+            return jp.array(
+                [
+                    -0.3,
+                    0.0,
+                    0.0,
+                    -1,
+                    0.0,
+                    0.0,
+                    -1,
+                    -0,
+                    0.0,  # gripper arm 1
+                    0.3,
+                    0.0,
+                    0.0,
+                    1,
+                    0.0,
+                    0.0,
+                    1,
+                    0,
+                    0.0,  # gripper arm 2
+                    0.3,
+                    0.0,
+                    0.0,
+                    1,
+                    0.0,
+                    0.0,
+                    1,
+                    0,
+                    0.0,  # gripper arm 3
+                    0.3,
+                    0.0,
+                    0.0,
+                    1,
+                    0.0,
+                    0.0,
+                    1,
+                    0,
+                    0.0,  # gripper arm 4
+                    0,
+                    0,
+                    -1.0 * ((250 - i) / 250) + -0.5 * (i / 250),  # position action
+                ]
+            )
 
-    state = env.reset(jp.random_prngkey(0))
-    step = jax.jit(env.step)
-    # grasp
-    for _ in range(250):
-      state = step(state, grasp_action)
-    # slowly lift
-    for i in range(250):
-      state = step(state, raise_action(i))
+        state = env.reset(jp.random_prngkey(0))
+        step = jax.jit(env.step)
+        # grasp
+        for _ in range(250):
+            state = step(state, grasp_action)
+        # slowly lift
+        for i in range(250):
+            state = step(state, raise_action(i))
 
-    self.assertGreater(state.qp.pos[1, 2], 1.36)  # ball lifted off ground
-    self.assertLess(state.qp.ang[1, 2], .01)  # ball not rolling
+        self.assertGreater(state.qp.pos[1, 2], 1.36)  # ball lifted off ground
+        self.assertLess(state.qp.ang[1, 2], 0.01)  # ball not rolling
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

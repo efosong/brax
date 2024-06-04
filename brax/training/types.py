@@ -23,9 +23,9 @@ import jax.numpy as jnp
 # via https://www.python.org/dev/peps/pep-0544/
 # Before that, its status was DRAFT and available via typing_extensions
 try:
-  from typing import Protocol  # pylint:disable=g-import-not-at-top
+    from typing import Protocol  # pylint:disable=g-import-not-at-top
 except ImportError:
-  from typing_extensions import Protocol  # pylint:disable=g-import-not-at-top
+    from typing_extensions import Protocol  # pylint:disable=g-import-not-at-top
 
 Params = Any
 PRNGKey = jnp.ndarray
@@ -36,52 +36,53 @@ Extra = Mapping[str, Any]
 PolicyParams = Any
 PreprocessorParams = Any
 PolicyParams = Tuple[PreprocessorParams, Params]
-NetworkType = TypeVar('NetworkType')
+NetworkType = TypeVar("NetworkType")
 
 
 class Transition(NamedTuple):
-  """Container for a transition."""
-  observation: NestedArray
-  action: NestedArray
-  reward: NestedArray
-  discount: NestedArray
-  next_observation: NestedArray
-  extras: NestedArray = ()  # pytype: disable=annotation-type-mismatch  # jax-ndarray
+    """Container for a transition."""
+
+    observation: NestedArray
+    action: NestedArray
+    reward: NestedArray
+    discount: NestedArray
+    next_observation: NestedArray
+    extras: NestedArray = ()  # pytype: disable=annotation-type-mismatch  # jax-ndarray
 
 
 class Policy(Protocol):
 
-  def __call__(
-      self,
-      observation: Observation,
-      key: PRNGKey,
-  ) -> Tuple[Action, Extra]:
-    pass
+    def __call__(
+        self,
+        observation: Observation,
+        key: PRNGKey,
+    ) -> Tuple[Action, Extra]:
+        pass
 
 
 class PreprocessObservationFn(Protocol):
 
-  def __call__(
-      self,
-      observation: Observation,
-      preprocessor_params: PreprocessorParams,
-  ) -> jnp.ndarray:
-    pass
+    def __call__(
+        self,
+        observation: Observation,
+        preprocessor_params: PreprocessorParams,
+    ) -> jnp.ndarray:
+        pass
 
 
-def identity_observation_preprocessor(observation: Observation,
-                                      preprocessor_params: PreprocessorParams):
-  del preprocessor_params
-  return observation
+def identity_observation_preprocessor(
+    observation: Observation, preprocessor_params: PreprocessorParams
+):
+    del preprocessor_params
+    return observation
 
 
 class NetworkFactory(Protocol[NetworkType]):
 
-  def __call__(
-      self,
-      observation_size: int,
-      action_size: int,
-      preprocess_observations_fn:
-      PreprocessObservationFn = identity_observation_preprocessor
-  ) -> NetworkType:
-    pass
+    def __call__(
+        self,
+        observation_size: int,
+        action_size: int,
+        preprocess_observations_fn: PreprocessObservationFn = identity_observation_preprocessor,
+    ) -> NetworkType:
+        pass

@@ -26,23 +26,23 @@ import numpy as np
 
 class PipelineTest(absltest.TestCase):
 
-  def test_pendulum(self):
-    model = test_utils.load_fixture('double_pendulum.xml')
+    def test_pendulum(self):
+        model = test_utils.load_fixture("double_pendulum.xml")
 
-    state = pipeline.init(model, model.init_q, jp.zeros(model.qd_size()))
-    step_fn = jax.jit(pipeline.step)
-    for _ in range(20):
-      state = step_fn(model, state, jp.zeros(model.act_size()))
+        state = pipeline.init(model, model.init_q, jp.zeros(model.qd_size()))
+        step_fn = jax.jit(pipeline.step)
+        for _ in range(20):
+            state = step_fn(model, state, jp.zeros(model.act_size()))
 
-    # compare against mujoco
-    model = test_utils.load_fixture_mujoco('double_pendulum.xml')
-    data = mujoco.MjData(model)
-    mujoco.mj_step(model, data, 20)
+        # compare against mujoco
+        model = test_utils.load_fixture_mujoco("double_pendulum.xml")
+        data = mujoco.MjData(model)
+        mujoco.mj_step(model, data, 20)
 
-    np.testing.assert_almost_equal(data.qpos, state.q, decimal=4)
-    np.testing.assert_almost_equal(data.qvel, state.qd, decimal=3)
-    np.testing.assert_almost_equal(data.xpos[1:], state.x.pos, decimal=4)
+        np.testing.assert_almost_equal(data.qpos, state.q, decimal=4)
+        np.testing.assert_almost_equal(data.qvel, state.qd, decimal=3)
+        np.testing.assert_almost_equal(data.xpos[1:], state.x.pos, decimal=4)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

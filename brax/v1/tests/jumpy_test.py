@@ -22,20 +22,20 @@ import numpy as np
 
 
 class ForiLoopTest(absltest.TestCase):
-  """Tests jumpy.fori_loop when jitted and not jitted."""
+    """Tests jumpy.fori_loop when jitted and not jitted."""
 
-  def testForiLoopTest(self):
-    a = jp.fori_loop(2, 4, lambda i, x: i + x, jp.array(1.))
-    self.assertIsInstance(a, np.float_)
-    self.assertEqual(a.shape, ())
-    self.assertAlmostEqual(a, 1.0 + 2.0 + 3.0)
+    def testForiLoopTest(self):
+        a = jp.fori_loop(2, 4, lambda i, x: i + x, jp.array(1.0))
+        self.assertIsInstance(a, np.float_)
+        self.assertEqual(a.shape, ())
+        self.assertAlmostEqual(a, 1.0 + 2.0 + 3.0)
 
-  def testForiLoopTestJit(self):
-    a = jax.jit(lambda: jp.fori_loop(2, 4, lambda i, x: i + x, jp.array(1.)))()
-    self.assertIsInstance(a, jnp.ndarray)
-    self.assertEqual(a.shape, ())
-    self.assertAlmostEqual(a, 1.0 + 2.0 + 3.0)
+    def testForiLoopTestJit(self):
+        a = jax.jit(lambda: jp.fori_loop(2, 4, lambda i, x: i + x, jp.array(1.0)))()
+        self.assertIsInstance(a, jnp.ndarray)
+        self.assertEqual(a.shape, ())
+        self.assertAlmostEqual(a, 1.0 + 2.0 + 3.0)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

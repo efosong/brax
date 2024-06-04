@@ -16,13 +16,13 @@
 # pylint:disable=g-complex-comprehension
 from brax.v1.experimental.braxlines.experiments import defaults
 
-ENV_NAMES = ('ant', 'halfcheetah', 'humanoid', 'hopper', 'walker2d')
-AGENT_MODULE = 'brax.experimental.braxlines.vgcrl.train'
+ENV_NAMES = ("ant", "halfcheetah", "humanoid", "hopper", "walker2d")
+AGENT_MODULE = "brax.experimental.braxlines.vgcrl.train"
 CONFIG = [
     dict(
         env_name=[env_name],
-        obs_indices='vel',
-        algo_name=['gcrl', 'diayn', 'cdiayn', 'diayn_full'],
+        obs_indices="vel",
+        algo_name=["gcrl", "diayn", "cdiayn", "diayn_full"],
         obs_scale=5.0,
         seed=list(range(10)),
         normalize_obs_for_disc=False,
@@ -30,6 +30,7 @@ CONFIG = [
         evaluate_lgr=True,
         env_reward_multiplier=0.0,
         spectral_norm=True,
-        ppo_params=defaults.get_ppo_params(env_name, 2))
+        ppo_params=defaults.get_ppo_params(env_name, 2),
+    )
     for env_name in ENV_NAMES
 ]

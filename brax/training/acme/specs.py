@@ -27,9 +27,10 @@ import jax.numpy as jnp
 
 @dataclasses.dataclass(frozen=True)
 class Array:
-  """Describes a numpy array or scalar shape and dtype.
+    """Describes a numpy array or scalar shape and dtype.
 
-  Similar to dm_env.specs.Array.
-  """
-  shape: Tuple[int, ...]
-  dtype: jnp.dtype
+    Similar to dm_env.specs.Array.
+    """
+
+    shape: Tuple[int, ...]
+    dtype: jnp.dtype

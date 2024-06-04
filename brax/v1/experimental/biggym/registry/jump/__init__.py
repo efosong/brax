@@ -13,18 +13,19 @@
 # limitations under the License.
 
 """Example: an existing Env + a new reward."""
-AUTHORS = ('Hiroki Furuta', 'Shixiang Shane Gu')
-CONTACTS = ('furuta@weblab.t.u-tokyo.ac.jp', 'shanegu@google.com')
-AFFILIATIONS = ('u-tokyo.ac.jp', 'google.com')
+AUTHORS = ("Hiroki Furuta", "Shixiang Shane Gu")
+CONTACTS = ("furuta@weblab.t.u-tokyo.ac.jp", "shanegu@google.com")
+AFFILIATIONS = ("u-tokyo.ac.jp", "google.com")
 DESCRIPTIONS = (
-    'HalfCheetah running and jumping',
-    'a cheetah hopping',
+    "HalfCheetah running and jumping",
+    "a cheetah hopping",
 )
 
 ENVS = dict(
     cheetah=dict(
-        module='cheetah:JumpCheetah',
-        tracks=('rl',),
-    ),)
+        module="cheetah:JumpCheetah",
+        tracks=("rl",),
+    ),
+)
 
 COMPONENTS = None

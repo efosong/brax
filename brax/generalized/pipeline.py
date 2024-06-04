@@ -36,58 +36,56 @@ def init(
     unused_act: Optional[jax.Array] = None,
     debug: bool = False,
 ) -> State:
-  """Initializes physics state.
+    """Initializes physics state.
 
-  Args:
-    sys: a brax system
-    q: (q_size,) joint angle vector
-    qd: (qd_size,) joint velocity vector
-    debug: if True, adds contact to the state for debugging
+    Args:
+      sys: a brax system
+      q: (q_size,) joint angle vector
+      qd: (qd_size,) joint velocity vector
+      debug: if True, adds contact to the state for debugging
 
-  Returns:
-    state: initial physics state
-  """
-  if sys.mj_model is not None:
-    mjcf.validate_model(sys.mj_model)
-  x, xd = kinematics.forward(sys, q, qd)
-  state = State.init(q, qd, x, xd)  # pytype: disable=wrong-arg-types  # jax-ndarray
-  state = dynamics.transform_com(sys, state)
-  state = mass.matrix_inv(sys, state, 0)
-  state = constraint.jacobian(sys, state)
-  if debug:
-    state = state.replace(contact=contact.get(sys, state.x))
+    Returns:
+      state: initial physics state
+    """
+    if sys.mj_model is not None:
+        mjcf.validate_model(sys.mj_model)
+    x, xd = kinematics.forward(sys, q, qd)
+    state = State.init(q, qd, x, xd)  # pytype: disable=wrong-arg-types  # jax-ndarray
+    state = dynamics.transform_com(sys, state)
+    state = mass.matrix_inv(sys, state, 0)
+    state = constraint.jacobian(sys, state)
+    if debug:
+        state = state.replace(contact=contact.get(sys, state.x))
 
-  return state
+    return state
 
 
-def step(
-    sys: System, state: State, act: jax.Array, debug: bool = False
-) -> State:
-  """Performs a physics step.
+def step(sys: System, state: State, act: jax.Array, debug: bool = False) -> State:
+    """Performs a physics step.
 
-  Args:
-    sys: a brax system
-    state: physics state prior to step
-    act: (act_size,) actuator input vector
-    debug: if True, adds contact to the state for debugging
+    Args:
+      sys: a brax system
+      state: physics state prior to step
+      act: (act_size,) actuator input vector
+      debug: if True, adds contact to the state for debugging
 
-  Returns:
-    state: physics state after step
-  """
-  # calculate acceleration terms
-  tau = actuator.to_tau(sys, act, state.q, state.qd)
-  state = state.replace(qf_smooth=dynamics.forward(sys, state, tau))
-  state = state.replace(qf_constraint=constraint.force(sys, state))
+    Returns:
+      state: physics state after step
+    """
+    # calculate acceleration terms
+    tau = actuator.to_tau(sys, act, state.q, state.qd)
+    state = state.replace(qf_smooth=dynamics.forward(sys, state, tau))
+    state = state.replace(qf_constraint=constraint.force(sys, state))
 
-  # update position/velocity level terms
-  state = integrator.integrate(sys, state)
-  x, xd = kinematics.forward(sys, state.q, state.qd)
-  state = state.replace(x=x, xd=xd)
-  state = dynamics.transform_com(sys, state)
-  state = mass.matrix_inv(sys, state, sys.matrix_inv_iterations)
-  state = constraint.jacobian(sys, state)
+    # update position/velocity level terms
+    state = integrator.integrate(sys, state)
+    x, xd = kinematics.forward(sys, state.q, state.qd)
+    state = state.replace(x=x, xd=xd)
+    state = dynamics.transform_com(sys, state)
+    state = mass.matrix_inv(sys, state, sys.matrix_inv_iterations)
+    state = constraint.jacobian(sys, state)
 
-  if debug:
-    state = state.replace(contact=contact.get(sys, state.x))
+    if debug:
+        state = state.replace(contact=contact.get(sys, state.x))
 
-  return state
+    return state

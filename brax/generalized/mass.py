@@ -25,81 +25,82 @@ from jax import numpy as jp
 
 
 def matrix(sys: System, state: State) -> jax.Array:
-  """Calculates the mass matrix for the system given joint position.
+    """Calculates the mass matrix for the system given joint position.
 
-  This function uses the Composite-Rigid-Body Algorithm as described here:
+    This function uses the Composite-Rigid-Body Algorithm as described here:
 
-  https://users.dimi.uniud.it/~antonio.dangelo/Robotica/2019/helper/Handbook-dynamics.pdf
+    https://users.dimi.uniud.it/~antonio.dangelo/Robotica/2019/helper/Handbook-dynamics.pdf
 
-  Args:
-    sys: a brax system
-    state: generalized state
+    Args:
+      sys: a brax system
+      state: generalized state
 
-  Returns:
-    a symmetric positive matrix (qd_size, qd_size) representing the generalized
-    mass and inertia of the system
-  """
-  # backward scan up tree: accumulate composite link inertias
-  def crb_fn(crb_child, crb):
-    if crb_child is not None:
-      crb += crb_child
-    return crb
+    Returns:
+      a symmetric positive matrix (qd_size, qd_size) representing the generalized
+      mass and inertia of the system
+    """
 
-  crb = scan.tree(sys, crb_fn, 'l', state.cinr, reverse=True)
+    # backward scan up tree: accumulate composite link inertias
+    def crb_fn(crb_child, crb):
+        if crb_child is not None:
+            crb += crb_child
+        return crb
 
-  # expand composite inertias to a matrix: M[i,j] = cdof_j * crb[i] * cdof_i
-  @jax.vmap
-  def mx_row(dof_link, cdof_i):
-    f = crb.take(dof_link).mul(cdof_i)
+    crb = scan.tree(sys, crb_fn, "l", state.cinr, reverse=True)
 
+    # expand composite inertias to a matrix: M[i,j] = cdof_j * crb[i] * cdof_i
     @jax.vmap
-    def mx_col(cdof_j):
-      return cdof_j.dot(f)
+    def mx_row(dof_link, cdof_i):
+        f = crb.take(dof_link).mul(cdof_i)
 
-    return mx_col(state.cdof)
+        @jax.vmap
+        def mx_col(cdof_j):
+            return cdof_j.dot(f)
 
-  mx = mx_row(sys.dof_link(), state.cdof)
+        return mx_col(state.cdof)
 
-  # mask out empty parts of the matrix
-  si, sj = [], []
-  dof_ranges = sys.dof_ranges()
-  for i in range(len(sys.link_parents)):
-    j = i
-    while j > -1:
-      for dof_i, dof_j in itertools.product(dof_ranges[i], dof_ranges[j]):
-        si, sj = si + [dof_i], sj + [dof_j]
-      j = sys.link_parents[j]
+    mx = mx_row(sys.dof_link(), state.cdof)
 
-  mx = mx * jp.zeros_like(mx).at[(jp.array(si), jp.array(sj))].set(1.0)
+    # mask out empty parts of the matrix
+    si, sj = [], []
+    dof_ranges = sys.dof_ranges()
+    for i in range(len(sys.link_parents)):
+        j = i
+        while j > -1:
+            for dof_i, dof_j in itertools.product(dof_ranges[i], dof_ranges[j]):
+                si, sj = si + [dof_i], sj + [dof_j]
+            j = sys.link_parents[j]
 
-  # we mask i, j<=i, which is the lower triangular portion of the matrix
-  # mirror it onto the upper triangular
-  mx = jp.tril(mx) + jp.tril(mx, -1).T
+    mx = mx * jp.zeros_like(mx).at[(jp.array(si), jp.array(sj))].set(1.0)
 
-  # add the armature inertia for rotors
-  mx = mx + jp.diag(sys.dof.armature)
+    # we mask i, j<=i, which is the lower triangular portion of the matrix
+    # mirror it onto the upper triangular
+    mx = jp.tril(mx) + jp.tril(mx, -1).T
 
-  return mx
+    # add the armature inertia for rotors
+    mx = mx + jp.diag(sys.dof.armature)
+
+    return mx
 
 
 def matrix_inv(sys: System, state: State, num_iter: int) -> State:
-  """Calculates the mass matrix and its inverse for the system.
+    """Calculates the mass matrix and its inverse for the system.
 
-  Args:
-    sys: a brax system
-    state: generalized state
-    num_iter: number of iterations for approximate inv
+    Args:
+      sys: a brax system
+      state: generalized state
+      num_iter: number of iterations for approximate inv
 
-  Returns:
-    state: generalized state with com, cinr, cd, cdof, cdofd updated
-  """
+    Returns:
+      state: generalized state with com, cinr, cd, cdof, cdofd updated
+    """
 
-  mx = matrix(sys, state)
-  mx_inv = state.mass_mx_inv
+    mx = matrix(sys, state)
+    mx_inv = state.mass_mx_inv
 
-  if num_iter > 0:
-    mx_inv = math.inv_approximate(mx, mx_inv, num_iter)
-  else:
-    mx_inv = jax.scipy.linalg.solve(mx, jp.eye(sys.qd_size()), assume_a='pos')
+    if num_iter > 0:
+        mx_inv = math.inv_approximate(mx, mx_inv, num_iter)
+    else:
+        mx_inv = jax.scipy.linalg.solve(mx, jp.eye(sys.qd_size()), assume_a="pos")
 
-  return state.replace(mass_mx=mx, mass_mx_inv=mx_inv)
+    return state.replace(mass_mx=mx, mass_mx_inv=mx_inv)

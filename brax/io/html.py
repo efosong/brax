@@ -27,30 +27,30 @@ import jinja2
 
 
 def save(path: str, sys: System, states: List[State]):
-  """Saves trajectory as an HTML text file."""
-  path = epath.Path(path)
-  if not path.parent.exists():
-    path.parent.mkdir(parents=True)
-  path.write_text(render(sys, states))
+    """Saves trajectory as an HTML text file."""
+    path = epath.Path(path)
+    if not path.parent.exists():
+        path.parent.mkdir(parents=True)
+    path.write_text(render(sys, states))
 
 
 def render_from_json(
     sys: str, height: Union[int, str], colab: bool, base_url: Optional[str]
 ) -> str:
-  """Returns an HTML string that visualizes the brax system json string."""
-  html_path = epath.resource_path('brax') / 'visualizer/index.html'
-  template = jinja2.Template(html_path.read_text())
+    """Returns an HTML string that visualizes the brax system json string."""
+    html_path = epath.resource_path("brax") / "visualizer/index.html"
+    template = jinja2.Template(html_path.read_text())
 
-  js_url = base_url
-  if base_url is None:
-    base_url = 'https://cdn.jsdelivr.net/gh/google/brax'
-    js_url = f'{base_url}@v{brax.__version__}/brax/visualizer/js/viewer.js'
+    js_url = base_url
+    if base_url is None:
+        base_url = "https://cdn.jsdelivr.net/gh/google/brax"
+        js_url = f"{base_url}@v{brax.__version__}/brax/visualizer/js/viewer.js"
 
-  sys = base64.b64encode(zlib.compress(bytes(sys, 'utf-8'))).decode('ascii')
-  html = template.render(
-      system_json_b64=sys, height=height, js_url=js_url, colab=colab
-  )
-  return html
+    sys = base64.b64encode(zlib.compress(bytes(sys, "utf-8"))).decode("ascii")
+    html = template.render(
+        system_json_b64=sys, height=height, js_url=js_url, colab=colab
+    )
+    return html
 
 
 def render(
@@ -60,17 +60,17 @@ def render(
     colab: bool = True,
     base_url: Optional[str] = None,
 ) -> str:
-  """Returns an HTML string for the brax system and trajectory.
+    """Returns an HTML string for the brax system and trajectory.
 
-  Args:
-    sys: brax System object
-    states: list of system states to render
-    height: the height of the render window
-    colab: whether to use css styles for colab
-    base_url: the base url for serving the visualizer files. By default, a CDN
-      url is used
+    Args:
+      sys: brax System object
+      states: list of system states to render
+      height: the height of the render window
+      colab: whether to use css styles for colab
+      base_url: the base url for serving the visualizer files. By default, a CDN
+        url is used
 
-  Returns:
-    string containing HTML for the brax visualizer
-  """
-  return render_from_json(json.dumps(sys, states), height, colab, base_url)
+    Returns:
+      string containing HTML for the brax visualizer
+    """
+    return render_from_json(json.dumps(sys, states), height, colab, base_url)

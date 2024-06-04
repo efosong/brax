@@ -30,8 +30,8 @@ NestedTensor = Any
 # pytype: disable=not-supported-yet
 NestedSpec = Union[
     specs.Array,
-    Iterable['NestedSpec'],
-    Mapping[Any, 'NestedSpec'],
+    Iterable["NestedSpec"],
+    Mapping[Any, "NestedSpec"],
 ]
 # pytype: enable=not-supported-yet
 

@@ -26,42 +26,40 @@ from mujoco import mjx
 
 
 def get(sys: System, x: Transform) -> Optional[Contact]:
-  """Calculates contacts.
+    """Calculates contacts.
 
-  Args:
-    sys: system defining the kinematic tree and other properties
-    x: link transforms in world frame
+    Args:
+      sys: system defining the kinematic tree and other properties
+      x: link transforms in world frame
 
-  Returns:
-    Contact pytree
-  """
-  d = mjx.make_data(sys)
-  if d.ncon == 0:
-    return None
+    Returns:
+      Contact pytree
+    """
+    d = mjx.make_data(sys)
+    if d.ncon == 0:
+        return None
 
-  @jax.vmap
-  def local_to_global(pos1, quat1, pos2, quat2):
-    pos = pos1 + math.rotate(pos2, quat1)
-    mat = math.quat_to_3x3(math.quat_mul(quat1, quat2))
-    return pos, mat
+    @jax.vmap
+    def local_to_global(pos1, quat1, pos2, quat2):
+        pos = pos1 + math.rotate(pos2, quat1)
+        mat = math.quat_to_3x3(math.quat_mul(quat1, quat2))
+        return pos, mat
 
-  x = x.concatenate(Transform.zero((1,)))
-  xpos = x.pos[sys.geom_bodyid - 1]
-  xquat = x.rot[sys.geom_bodyid - 1]
-  geom_xpos, geom_xmat = local_to_global(
-      xpos, xquat, sys.geom_pos, sys.geom_quat
-  )
+    x = x.concatenate(Transform.zero((1,)))
+    xpos = x.pos[sys.geom_bodyid - 1]
+    xquat = x.rot[sys.geom_bodyid - 1]
+    geom_xpos, geom_xmat = local_to_global(xpos, xquat, sys.geom_pos, sys.geom_quat)
 
-  # pytype: disable=wrong-arg-types
-  d = d.replace(geom_xpos=geom_xpos, geom_xmat=geom_xmat)
-  d = mjx.collision(sys, d)
-  # pytype: enable=wrong-arg-types
+    # pytype: disable=wrong-arg-types
+    d = d.replace(geom_xpos=geom_xpos, geom_xmat=geom_xmat)
+    d = mjx.collision(sys, d)
+    # pytype: enable=wrong-arg-types
 
-  c = d.contact
-  elasticity = (sys.elasticity[c.geom1] + sys.elasticity[c.geom2]) * 0.5
+    c = d.contact
+    elasticity = (sys.elasticity[c.geom1] + sys.elasticity[c.geom2]) * 0.5
 
-  body1 = jp.array(sys.geom_bodyid)[c.geom1] - 1
-  body2 = jp.array(sys.geom_bodyid)[c.geom2] - 1
-  link_idx = (body1, body2)
+    body1 = jp.array(sys.geom_bodyid)[c.geom1] - 1
+    body2 = jp.array(sys.geom_bodyid)[c.geom2] - 1
+    link_idx = (body1, body2)
 
-  return Contact(elasticity=elasticity, link_idx=link_idx, **c.__dict__)
+    return Contact(elasticity=elasticity, link_idx=link_idx, **c.__dict__)

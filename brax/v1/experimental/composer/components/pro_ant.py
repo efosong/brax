@@ -20,10 +20,10 @@ import numpy as np
 
 
 def generate_ant_config_with_n_legs(n):
-  """Generate info for n-legged ant."""
+    """Generate info for n-legged ant."""
 
-  def template_leg(theta, ind):
-    tmp = f"""
+    def template_leg(theta, ind):
+        tmp = f"""
       bodies {{
       name: "Aux 1_{str(ind)}"
       colliders {{
@@ -88,10 +88,10 @@ def generate_ant_config_with_n_legs(n):
       torque {{}}
     }}
     """
-    collides = (f'Aux 1_{str(ind)}', f'$ Body 4_{str(ind)}')
-    return tmp, collides
+        collides = (f"Aux 1_{str(ind)}", f"$ Body 4_{str(ind)}")
+        return tmp, collides
 
-  base_config = f"""
+    base_config = f"""
     bodies {{
       name: "{ROOT}"
       colliders {{
@@ -105,20 +105,21 @@ def generate_ant_config_with_n_legs(n):
       mass: 10
     }}
     """
-  collides = (ROOT,)
-  for i in range(n):
-    config_i, collides_i = template_leg((1. * i / n) * 2 * np.pi, i)
-    base_config += config_i
-    collides += collides_i
+    collides = (ROOT,)
+    for i in range(n):
+        config_i, collides_i = template_leg((1.0 * i / n) * 2 * np.pi, i)
+        base_config += config_i
+        collides += collides_i
 
-  return base_config, collides
+    return base_config, collides
 
 
 def get_specs(num_legs: int = 10):
-  message_str, collides = generate_ant_config_with_n_legs(num_legs)
-  return dict(
-      message_str=message_str,
-      collides=collides,
-      root=ROOT,
-      term_fn=term_fn,
-      observers=DEFAULT_OBSERVERS)
+    message_str, collides = generate_ant_config_with_n_legs(num_legs)
+    return dict(
+        message_str=message_str,
+        collides=collides,
+        root=ROOT,
+        term_fn=term_fn,
+        observers=DEFAULT_OBSERVERS,
+    )

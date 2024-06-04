@@ -24,31 +24,34 @@ import jax
 
 class WrappersTest(absltest.TestCase):
 
-  def test_randomize_ant_friction(self):
+    def test_randomize_ant_friction(self):
 
-    test_ant_fn = ant.Ant
+        test_ant_fn = ant.Ant
 
-    # generate random friction values
-    random_friction = jp.array(
-        jax.random.uniform(jax.random.PRNGKey(42), (128,)))
+        # generate random friction values
+        random_friction = jp.array(jax.random.uniform(jax.random.PRNGKey(42), (128,)))
 
-    # build traceable config trees
-    friction_tree, friction_axes = randomizers.friction_randomizer(
-        test_ant_fn(), random_friction)
+        # build traceable config trees
+        friction_tree, friction_axes = randomizers.friction_randomizer(
+            test_ant_fn(), random_friction
+        )
 
-    random_friction_test_ant = wrappers.DomainRandomizationWrapper(
-        test_ant_fn, friction_tree, friction_axes)
+        random_friction_test_ant = wrappers.DomainRandomizationWrapper(
+            test_ant_fn, friction_tree, friction_axes
+        )
 
-    # test reset
-    out_state = jax.jit(random_friction_test_ant.reset)(
-        jax.random.split(jax.random.PRNGKey(42), 128))
-    self.assertEqual(out_state.qp.pos.shape[0], 128)
+        # test reset
+        out_state = jax.jit(random_friction_test_ant.reset)(
+            jax.random.split(jax.random.PRNGKey(42), 128)
+        )
+        self.assertEqual(out_state.qp.pos.shape[0], 128)
 
-    # test step
-    next_state = jax.jit(random_friction_test_ant.step)(out_state,
-                                                        jp.zeros((128, 10)))
-    self.assertEqual(next_state.qp.pos.shape[0], 128)
+        # test step
+        next_state = jax.jit(random_friction_test_ant.step)(
+            out_state, jp.zeros((128, 10))
+        )
+        self.assertEqual(next_state.qp.pos.shape[0], 128)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

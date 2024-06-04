@@ -20,149 +20,147 @@ from brax.v1.envs import env
 
 
 class InvertedPendulum(env.Env):
+    """
+    ### Description
+
+    This environment is the cartpole environment based on the work done by Barto,
+    Sutton, and Anderson in
+    ["Neuronlike adaptive elements that can solve difficult learning control problems"](https://ieeexplore.ieee.org/document/6313077).
+
+    This environment involves a cart that can moved linearly, with a pole fixed on
+    it at one end and having another end free. The cart can be pushed left or
+    right, and the goal is to balance the pole on the top of the cart by applying
+    forces on the cart.
+
+    ### Action Space
+
+    The agent take a 1-element vector for actions. The action space is a
+    continuous `(action)` in `[-3, 3]`, where `action` represents the numerical
+    force applied to the cart (with magnitude representing the amount of force and
+    sign representing the direction)
+
+    | Num | Action                    | Control Min | Control Max | Name (in corresponding config) | Joint | Unit      |
+    |-----|---------------------------|-------------|-------------|--------------------------------|-------|-----------|
+    | 0   | Force applied on the cart | -1          | 1           | thruster                       | slide | Force (N) |
+
+    ### Observation Space
+
+    The state space consists of positional values of different body parts of the
+    pendulum system, followed by the velocities of those individual parts (their
+    derivatives) with all the positions ordered before all the velocities.
+
+    The observation is a `ndarray` with shape `(4,)` where the elements correspond
+    to the following:
+
+    | Num | Observation                                   | Min  | Max | Name (in corresponding config) | Joint | Unit                     |
+    |-----|-----------------------------------------------|------|-----|--------------------------------|-------|--------------------------|
+    | 0   | position of the cart along the linear surface | -Inf | Inf | thruster                       | slide | position (m)             |
+    | 1   | vertical angle of the pole on the cart        | -Inf | Inf | hinge                          | hinge | angle (rad)              |
+    | 2   | linear velocity of the cart                   | -Inf | Inf | thruster                       | slide | velocity (m/s)           |
+    | 3   | angular velocity of the pole on the cart      | -Inf | Inf | hinge                          | hinge | angular velocity (rad/s) |
 
 
+    ### Rewards
 
-  """
-  ### Description
+    The goal is to make the inverted pendulum stand upright (within a certain
+    angle limit) as long as possible - as such a reward of +1 is awarded for each
+    timestep that the pole is upright.
 
-  This environment is the cartpole environment based on the work done by Barto,
-  Sutton, and Anderson in
-  ["Neuronlike adaptive elements that can solve difficult learning control problems"](https://ieeexplore.ieee.org/document/6313077).
+    ### Starting State
+    All observations start in state (0.0, 0.0, 0.0, 0.0) with a uniform noise in
+    the range of [-0.01, 0.01] added to the values for stochasticity.
 
-  This environment involves a cart that can moved linearly, with a pole fixed on
-  it at one end and having another end free. The cart can be pushed left or
-  right, and the goal is to balance the pole on the top of the cart by applying
-  forces on the cart.
+    ### Episode Termination
 
-  ### Action Space
+    The episode terminates when any of the following happens:
 
-  The agent take a 1-element vector for actions. The action space is a
-  continuous `(action)` in `[-3, 3]`, where `action` represents the numerical
-  force applied to the cart (with magnitude representing the amount of force and
-  sign representing the direction)
+    1. The episode duration reaches 1000 timesteps.
+    2. The absolute value of the vertical angle between the pole and the cart is
+    greater than 0.2 radians.
 
-  | Num | Action                    | Control Min | Control Max | Name (in corresponding config) | Joint | Unit      |
-  |-----|---------------------------|-------------|-------------|--------------------------------|-------|-----------|
-  | 0   | Force applied on the cart | -1          | 1           | thruster                       | slide | Force (N) |
+    ### Arguments
 
-  ### Observation Space
+    No additional arguments are currently supported (in v2 and lower), but
+    modifications can be made to the XML file in the assets folder (or by changing
+    the path to a modified XML file in another folder).
 
-  The state space consists of positional values of different body parts of the
-  pendulum system, followed by the velocities of those individual parts (their
-  derivatives) with all the positions ordered before all the velocities.
+    ```
+    env = gym.make('InvertedPendulum-v2')
+    ```
 
-  The observation is a `ndarray` with shape `(4,)` where the elements correspond
-  to the following:
+    There is no v3 for InvertedPendulum, unlike the robot environments where a v3
+    and beyond take gym.make kwargs such as ctrl_cost_weight, reset_noise_scale
+    etc.
 
-  | Num | Observation                                   | Min  | Max | Name (in corresponding config) | Joint | Unit                     |
-  |-----|-----------------------------------------------|------|-----|--------------------------------|-------|--------------------------|
-  | 0   | position of the cart along the linear surface | -Inf | Inf | thruster                       | slide | position (m)             |
-  | 1   | vertical angle of the pole on the cart        | -Inf | Inf | hinge                          | hinge | angle (rad)              |
-  | 2   | linear velocity of the cart                   | -Inf | Inf | thruster                       | slide | velocity (m/s)           |
-  | 3   | angular velocity of the pole on the cart      | -Inf | Inf | hinge                          | hinge | angular velocity (rad/s) |
+    There is a v4 version that uses the mujoco-bindings
 
+    ```
+    env = gym.make('InvertedPendulum-v4')
+    ```
 
-  ### Rewards
+    And a v5 version that uses Brax:
 
-  The goal is to make the inverted pendulum stand upright (within a certain
-  angle limit) as long as possible - as such a reward of +1 is awarded for each
-  timestep that the pole is upright.
+    ```
+    env = gym.make('InvertedPendulum-v5')
+    ```
 
-  ### Starting State
-  All observations start in state (0.0, 0.0, 0.0, 0.0) with a uniform noise in
-  the range of [-0.01, 0.01] added to the values for stochasticity.
+    ### Version History
 
-  ### Episode Termination
+    * v5: ported to Brax.
+    * v4: all mujoco environments now use the mujoco bindings in mujoco>=2.1.3
+    * v3: support for gym.make kwargs such as ctrl_cost_weight, reset_noise_scale
+      etc. rgb rendering comes from tracking camera (so agent does not run away
+      from screen)
+    * v2: All continuous control environments now use mujoco_py >= 1.50
+    * v1: max_time_steps raised to 1000 for robot based tasks (including inverted
+      pendulum)
+    * v0: Initial versions release (1.0.0)
+    """
 
-  The episode terminates when any of the following happens:
+    def __init__(self, legacy_spring=False, **kwargs):
+        config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
+        super().__init__(config=config, **kwargs)
 
-  1. The episode duration reaches 1000 timesteps.
-  2. The absolute value of the vertical angle between the pole and the cart is
-  greater than 0.2 radians.
+    def reset(self, rng: jp.ndarray) -> env.State:
+        """Resets the environment to an initial state."""
+        rng, rng1, rng2 = jp.random_split(rng, 3)
 
-  ### Arguments
+        qpos = self.sys.default_angle() + self._noise(rng1)
+        qvel = self._noise(rng2)
 
-  No additional arguments are currently supported (in v2 and lower), but
-  modifications can be made to the XML file in the assets folder (or by changing
-  the path to a modified XML file in another folder).
+        qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
+        obs = self._get_obs(qp, self.sys.info(qp))
+        reward, done = jp.zeros(2)
+        metrics = {}
 
-  ```
-  env = gym.make('InvertedPendulum-v2')
-  ```
+        return env.State(qp, obs, reward, done, metrics)
 
-  There is no v3 for InvertedPendulum, unlike the robot environments where a v3
-  and beyond take gym.make kwargs such as ctrl_cost_weight, reset_noise_scale
-  etc.
+    def step(self, state: env.State, action: jp.ndarray) -> env.State:
+        """Run one timestep of the environment's dynamics."""
+        qp, info = self.sys.step(state.qp, action)
+        obs = self._get_obs(qp, info)
+        reward = 1.0
+        done = jp.where(
+            jp.abs(obs[1]) > 0.2, 1.0, 0.0
+        )  # pytype: disable=wrong-arg-types  # jax-ndarray
 
-  There is a v4 version that uses the mujoco-bindings
+        return state.replace(qp=qp, obs=obs, reward=reward, done=done)
 
-  ```
-  env = gym.make('InvertedPendulum-v4')
-  ```
+    @property
+    def action_size(self):
+        return 1
 
-  And a v5 version that uses Brax:
+    def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
+        """Observe cartpole body position and velocities."""
+        joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
 
-  ```
-  env = gym.make('InvertedPendulum-v5')
-  ```
+        # [cart pos, joint angle, cart vel, joint vel]
+        obs = [qp.pos[0, :1], joint_angle, qp.vel[0, :1], joint_vel]
 
-  ### Version History
+        return jp.concatenate(obs)
 
-  * v5: ported to Brax.
-  * v4: all mujoco environments now use the mujoco bindings in mujoco>=2.1.3
-  * v3: support for gym.make kwargs such as ctrl_cost_weight, reset_noise_scale
-    etc. rgb rendering comes from tracking camera (so agent does not run away
-    from screen)
-  * v2: All continuous control environments now use mujoco_py >= 1.50
-  * v1: max_time_steps raised to 1000 for robot based tasks (including inverted
-    pendulum)
-  * v0: Initial versions release (1.0.0)
-  """
-
-
-  def __init__(self, legacy_spring=False, **kwargs):
-    config = _SYSTEM_CONFIG_SPRING if legacy_spring else _SYSTEM_CONFIG
-    super().__init__(config=config, **kwargs)
-
-  def reset(self, rng: jp.ndarray) -> env.State:
-    """Resets the environment to an initial state."""
-    rng, rng1, rng2 = jp.random_split(rng, 3)
-
-    qpos = self.sys.default_angle() + self._noise(rng1)
-    qvel = self._noise(rng2)
-
-    qp = self.sys.default_qp(joint_angle=qpos, joint_velocity=qvel)
-    obs = self._get_obs(qp, self.sys.info(qp))
-    reward, done = jp.zeros(2)
-    metrics = {}
-
-    return env.State(qp, obs, reward, done, metrics)
-
-  def step(self, state: env.State, action: jp.ndarray) -> env.State:
-    """Run one timestep of the environment's dynamics."""
-    qp, info = self.sys.step(state.qp, action)
-    obs = self._get_obs(qp, info)
-    reward = 1.0
-    done = jp.where(jp.abs(obs[1]) > .2, 1.0, 0.0)  # pytype: disable=wrong-arg-types  # jax-ndarray
-
-    return state.replace(qp=qp, obs=obs, reward=reward, done=done)
-
-  @property
-  def action_size(self):
-    return 1
-
-  def _get_obs(self, qp: brax.QP, info: brax.Info) -> jp.ndarray:
-    """Observe cartpole body position and velocities."""
-    joint_angle, joint_vel = self.sys.joints[0].angle_vel(qp)
-
-    # [cart pos, joint angle, cart vel, joint vel]
-    obs = [qp.pos[0, :1], joint_angle, qp.vel[0, :1], joint_vel]
-
-    return jp.concatenate(obs)
-
-  def _noise(self, rng):
-    return jp.random_uniform(rng, (self.sys.num_joint_dof,), -0.01, 0.01)
+    def _noise(self, rng):
+        return jp.random_uniform(rng, (self.sys.num_joint_dof,), -0.01, 0.01)
 
 
 _SYSTEM_CONFIG = """

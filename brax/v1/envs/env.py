@@ -27,76 +27,76 @@ from google.protobuf import text_format
 
 @struct.dataclass
 class State:
-  """Environment state for training and inference."""
-  qp: brax.QP
-  obs: jp.ndarray
-  reward: jp.ndarray
-  done: jp.ndarray
-  metrics: Dict[str, jp.ndarray] = struct.field(default_factory=dict)
-  info: Dict[str, Any] = struct.field(default_factory=dict)
+    """Environment state for training and inference."""
+
+    qp: brax.QP
+    obs: jp.ndarray
+    reward: jp.ndarray
+    done: jp.ndarray
+    metrics: Dict[str, jp.ndarray] = struct.field(default_factory=dict)
+    info: Dict[str, Any] = struct.field(default_factory=dict)
 
 
 @pytree.register
 class Env(abc.ABC):
-  """API for driving a brax system for training and inference."""
+    """API for driving a brax system for training and inference."""
 
+    def __init__(self, config: Optional[str], *args, **kwargs):
+        if config:
+            config = text_format.Parse(config, brax.Config())
+            self.sys = brax.System(config, *args, **kwargs)
 
-  def __init__(self, config: Optional[str], *args, **kwargs):
-    if config:
-      config = text_format.Parse(config, brax.Config())
-      self.sys = brax.System(config, *args, **kwargs)
+    @abc.abstractmethod
+    def reset(self, rng: jp.ndarray) -> State:
+        """Resets the environment to an initial state."""
 
-  @abc.abstractmethod
-  def reset(self, rng: jp.ndarray) -> State:
-    """Resets the environment to an initial state."""
+    @abc.abstractmethod
+    def step(self, state: State, action: jp.ndarray) -> State:
+        """Run one timestep of the environment's dynamics."""
 
-  @abc.abstractmethod
-  def step(self, state: State, action: jp.ndarray) -> State:
-    """Run one timestep of the environment's dynamics."""
+    @property
+    def observation_size(self) -> int:
+        """The size of the observation vector returned in step and reset."""
+        rng = jp.random_prngkey(0)
+        reset_state = self.unwrapped.reset(rng)
+        return reset_state.obs.shape[-1]
 
-  @property
-  def observation_size(self) -> int:
-    """The size of the observation vector returned in step and reset."""
-    rng = jp.random_prngkey(0)
-    reset_state = self.unwrapped.reset(rng)
-    return reset_state.obs.shape[-1]
+    @property
+    def action_size(self) -> int:
+        """The size of the action vector expected by step."""
+        return self.sys.num_joint_dof + self.sys.num_forces_dof
 
-  @property
-  def action_size(self) -> int:
-    """The size of the action vector expected by step."""
-    return self.sys.num_joint_dof + self.sys.num_forces_dof
-
-  @property
-  def unwrapped(self) -> 'Env':
-    return self
+    @property
+    def unwrapped(self) -> "Env":
+        return self
 
 
 class Wrapper(Env):
-  """Wraps the environment to allow modular transformations."""
+    """Wraps the environment to allow modular transformations."""
 
-  def __init__(self, env: Env):
-    super().__init__(config=None)
-    self.env = env
+    def __init__(self, env: Env):
+        super().__init__(config=None)
+        self.env = env
 
-  def reset(self, rng: jp.ndarray) -> State:
-    return self.env.reset(rng)
+    def reset(self, rng: jp.ndarray) -> State:
+        return self.env.reset(rng)
 
-  def step(self, state: State, action: jp.ndarray) -> State:
-    return self.env.step(state, action)
+    def step(self, state: State, action: jp.ndarray) -> State:
+        return self.env.step(state, action)
 
-  @property
-  def observation_size(self) -> int:
-    return self.env.observation_size
+    @property
+    def observation_size(self) -> int:
+        return self.env.observation_size
 
-  @property
-  def action_size(self) -> int:
-    return self.env.action_size
+    @property
+    def action_size(self) -> int:
+        return self.env.action_size
 
-  @property
-  def unwrapped(self) -> Env:
-    return self.env.unwrapped
+    @property
+    def unwrapped(self) -> Env:
+        return self.env.unwrapped
 
-  def __getattr__(self, name):
-    if name == '__setstate__':
-      raise AttributeError(name)
-    return getattr(self.env, name)
+    def __getattr__(self, name):
+        if name == "__setstate__":
+            raise AttributeError(name)
+        return getattr(self.env, name)

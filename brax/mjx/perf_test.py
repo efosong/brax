@@ -24,20 +24,20 @@ from jax import numpy as jp
 
 class PerfTest(absltest.TestCase):
 
-  def test_pipeline_ant(self):
-    model = test_utils.load_fixture('ant.xml')
+    def test_pipeline_ant(self):
+        model = test_utils.load_fixture("ant.xml")
 
-    def init_fn(rng):
-      rng1, rng2 = jax.random.split(rng, 2)
-      q = jax.random.uniform(rng1, (model.nq,), minval=-0.1, maxval=0.1)
-      qd = 0.1 * jax.random.normal(rng2, (model.nv,))
-      return pipeline.init(model, q, qd)
+        def init_fn(rng):
+            rng1, rng2 = jax.random.split(rng, 2)
+            q = jax.random.uniform(rng1, (model.nq,), minval=-0.1, maxval=0.1)
+            qd = 0.1 * jax.random.normal(rng2, (model.nv,))
+            return pipeline.init(model, q, qd)
 
-    def step_fn(data):
-      return pipeline.step(model, data, jp.zeros(model.nu))
+        def step_fn(data):
+            return pipeline.step(model, data, jp.zeros(model.nu))
 
-    test_utils.benchmark('mjx pipeline ant', init_fn, step_fn)
+        test_utils.benchmark("mjx pipeline ant", init_fn, step_fn)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

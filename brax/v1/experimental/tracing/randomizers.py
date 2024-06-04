@@ -24,74 +24,76 @@ import jax
 
 
 def friction_randomizer(env: Env, friction_range: jp.ndarray):
-  """Constructs tree and in_axes objects for a friction domain randomizer.
+    """Constructs tree and in_axes objects for a friction domain randomizer.
 
-  Args:
-    env: Environment to randomize over
-    friction_range: (m,) friction values to use for domain randomization
+    Args:
+      env: Environment to randomize over
+      friction_range: (m,) friction values to use for domain randomization
 
-  Returns:
-    Tuple of a pytree containing the randomized values packed into a tree
-    structure parseable by the TracedConfig class, as well as in_axes
-    describing which entries of that pytree are vectorized.
-  """
+    Returns:
+      Tuple of a pytree containing the randomized values packed into a tree
+      structure parseable by the TracedConfig class, as well as in_axes
+      describing which entries of that pytree are vectorized.
+    """
 
-  custom_tree = {'bodies': []}
-  for b in env.sys.config.bodies:
-    custom_tree['bodies'].append({'colliders': []})
-    for _ in b.colliders:
-      custom_tree['bodies'][-1]['colliders'].append({
-          'material': {
-              'friction': friction_range
-          }
-      })
+    custom_tree = {"bodies": []}
+    for b in env.sys.config.bodies:
+        custom_tree["bodies"].append({"colliders": []})
+        for _ in b.colliders:
+            custom_tree["bodies"][-1]["colliders"].append(
+                {"material": {"friction": friction_range}}
+            )
 
-    in_axes = (jax.tree.map(lambda x: 0
-                            if hasattr(x, 'shape') else None, custom_tree),)
-  return custom_tree, in_axes
+        in_axes = (
+            jax.tree.map(lambda x: 0 if hasattr(x, "shape") else None, custom_tree),
+        )
+    return custom_tree, in_axes
 
 
-def joint_randomizer(env: Env,
-                     joint_offsets: jp.ndarray,
-                     joint_offsets_key: Optional[List[str]] = None):
-  """Constructs tree and in_axes objects for a joint socket randomizer.
+def joint_randomizer(
+    env: Env, joint_offsets: jp.ndarray, joint_offsets_key: Optional[List[str]] = None
+):
+    """Constructs tree and in_axes objects for a joint socket randomizer.
 
-  Adds an offset to any joints that match a key appearing in joint_key.  If
-  no joint_key, then does nothing.
+    Adds an offset to any joints that match a key appearing in joint_key.  If
+    no joint_key, then does nothing.
 
-  Args:
-    env: Environment to randomize over
-    joint_offsets: (m,3) offset vectors for joints
-    joint_offsets_key: (k,) list of string keys for marking joints to be shifted
+    Args:
+      env: Environment to randomize over
+      joint_offsets: (m,3) offset vectors for joints
+      joint_offsets_key: (k,) list of string keys for marking joints to be shifted
 
-  Returns:
-    Tuple of a pytree containing the randomized values packed into a tree
-    structure parseable by the TracedConfig class, as well as in_axes
-    describing which entries of that pytree are vectorized.
-  """
+    Returns:
+      Tuple of a pytree containing the randomized values packed into a tree
+      structure parseable by the TracedConfig class, as well as in_axes
+      describing which entries of that pytree are vectorized.
+    """
 
-  custom_tree = {'joints': []}
+    custom_tree = {"joints": []}
 
-  for j in env.sys.config.joints:
+    for j in env.sys.config.joints:
 
-    if any([key in j.name for key in joint_offsets_key]):
-      custom_tree['joints'].append({
-          'parent_offset': {
-              'x': joint_offsets[:, 0] + j.parent_offset.x,
-              'y': joint_offsets[:, 1] + j.parent_offset.y,
-              'z': joint_offsets[:, 2] + j.parent_offset.z
-          },
-      })
-    else:
-      custom_tree['joints'].append({
-          'parent_offset': {
-              'x': j.parent_offset.x,
-              'y': j.parent_offset.y,
-              'z': j.parent_offset.z
-          },
-      })
+        if any([key in j.name for key in joint_offsets_key]):
+            custom_tree["joints"].append(
+                {
+                    "parent_offset": {
+                        "x": joint_offsets[:, 0] + j.parent_offset.x,
+                        "y": joint_offsets[:, 1] + j.parent_offset.y,
+                        "z": joint_offsets[:, 2] + j.parent_offset.z,
+                    },
+                }
+            )
+        else:
+            custom_tree["joints"].append(
+                {
+                    "parent_offset": {
+                        "x": j.parent_offset.x,
+                        "y": j.parent_offset.y,
+                        "z": j.parent_offset.z,
+                    },
+                }
+            )
 
-  in_axes = (jax.tree.map(lambda x: 0
-                          if hasattr(x, 'shape') else None, custom_tree),)
+    in_axes = (jax.tree.map(lambda x: 0 if hasattr(x, "shape") else None, custom_tree),)
 
-  return custom_tree, in_axes
+    return custom_tree, in_axes
