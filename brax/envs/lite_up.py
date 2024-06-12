@@ -124,8 +124,8 @@ class LiteUp(PipelineEnv):
         metrics = {
             "reward_vertical": zero,
             "reward_ctrl": zero,
-            "x_position": zero,
-            "x_velocity": zero,
+            "z_position": zero,
+            "z_velocity": zero,
         }
         return State(pipeline_state, obs, reward, done, metrics)
 
