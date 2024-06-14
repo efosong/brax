@@ -1,5 +1,5 @@
 <mujoco model="panda">
-  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+  <compiler angle="radian" meshdir="panda_mesh" autolimits="true"/>
 
   <option integrator="implicitfast"/>
 
