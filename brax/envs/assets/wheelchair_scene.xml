@@ -90,8 +90,11 @@
     <default class="visual">
       <geom type="mesh" contype="0" conaffinity="0" group="2"/>
     </default>
+    <default class="disabled_collision">
+      <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.5"/>
+	</default>
     <default class="collision">
-      <geom contype="1" conaffinity="1" group="3" rgba="1 0 0 0.5"/>
+		<geom contype="1" conaffinity="1" group="3" rgba="1 0 0 0.5"/>
         <default class="fingertip_pad_collision_1">
           <geom type="box" size="0.0085 0.004 0.0085" pos="0 0.0055 0.0445"/>
         </default>
@@ -127,11 +130,10 @@
     <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
     <camera name="default" pos="0.846 -1.465 0.916" xyaxes="0.866 0.500 0.000 -0.171 0.296 0.940"/>
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane" conaffinity="1"/>
-    <body name="wheelchair_container" pos="0 0 0.1" euler="1.57 0 0">
+    <body name="wheelchair_container" pos="0 0 0.06" euler="1.57 0 0">
 		<include file="wheelchair_assets/wheelchair_bare.xml"/>
-		<freejoint/>
     </body>
-    <body childclass="humanoid" name="humanoid_container" pos="0 0.4 0.03" euler="0.0 0 1.57">
+    <body childclass="humanoid" name="humanoid_container" pos="0.011 0.1 -0.350" euler="0.0 0 1.57">
 	  <include file="wheelchair_assets/humanoid_bare.xml"/>
 		<freejoint/>
     </body>
@@ -175,10 +177,11 @@
 
   <equality>
     <joint joint1="finger_joint1" joint2="finger_joint2" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+	<weld body1="wheelchair" body2="pelvis" torquescale="0"/>
   </equality>
 
   <keyframe>
-    <key name="init" qpos='0 0 0.06 0.707 0.707 0 0 0.011 0.187 -0.420 0.7 0.073 -0.077 0.707 0 -0.649 0.007 -0.043 -0.018 -0.523 -1.993 -0.014 0 -0.531 -1.993 0.509 -0.427 -0.400 -0.474 0.427 -0.400 0 0 0 0 0 0 0 0 0'/>
+    <key name="init" qpos='0.011 0.187 -0.420 0.7 0.073 -0.077 0.707 0 -0.649 0.007 -0.043 -0.018 -0.523 -1.993 -0.014 0 -0.531 -1.993 0.509 -0.427 -0.400 -0.474 0.427 -0.400 0 0 0 0 0 0 0 0 0'/>
   </keyframe>
 
 </mujoco>
