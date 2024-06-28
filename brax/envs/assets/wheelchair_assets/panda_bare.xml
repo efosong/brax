@@ -52,7 +52,7 @@
               <geom mesh="link5_0" material="black" class="visual"/>
               <geom mesh="link5_1" material="white" class="visual"/>
               <geom mesh="link5_2" material="white" class="visual"/>
-  	        <geom class="collision" type="capsule" mesh="link5_2" />
+  	        <geom class="disabled_collision" type="capsule" mesh="link5_2" />
               <body name="link6" quat="1 1 0 0">
                 <inertial mass="1.666555" pos="6.0149e-2 -1.4117e-2 -1.0517e-2"
                   fullinertia="1.964e-3 4.354e-3 5.433e-3 1.09e-4 -1.158e-3 3.41e-4"/>
@@ -74,7 +74,7 @@
                 <geom mesh="link6_14" material="black" class="visual"/>
                 <geom mesh="link6_15" material="black" class="visual"/>
                 <geom mesh="link6_16" material="white" class="visual"/>
-  	          <geom class="collision" type="box" mesh="link6_16" />
+  	          <geom class="c_r-hand" type="box" mesh="link6_16" />
                 <body name="link7" pos="0.088 0 0" quat="1 1 0 0">
                   <inertial mass="7.35522e-01" pos="1.0517e-2 -4.252e-3 6.1597e-2"
                     fullinertia="1.2516e-2 1.0027e-2 4.815e-3 -4.28e-4 -1.196e-3 -7.41e-4"/>
@@ -87,8 +87,8 @@
                   <geom mesh="link7_5" material="black" class="visual"/>
                   <geom mesh="link7_6" material="black" class="visual"/>
                   <geom mesh="link7_7" material="white" class="visual"/>
-  	            <geom class="collision" type="capsule" mesh="link7_7" />
-  	            <geom class="collision" type="box" mesh="link7_0" />
+  	            <geom class="c_r-hand" type="capsule" mesh="link7_7" />
+  	            <geom class="c_r-hand" type="box" mesh="link7_0" />
                   <body name="hand" pos="0 0 0.107" quat="0.9238795 0 0 -0.3826834">
                     <inertial mass="0.73" pos="-0.01 0 0.03" diaginertia="0.001 0.0025 0.0017"/>
                     <geom mesh="hand_0" material="off_white" class="visual"/>
@@ -99,15 +99,15 @@
   				  <!--
   	              <geom class="collision" type="box" pos="0.000 0.000 0.030" size="0.020 0.100 0.040" />
   				  -->
-  	              <geom class="collision" type="box" mesh="hand_3" />
+  	                <geom class="c_r-hand" type="box" mesh="hand_3" />
                     <body name="left_finger" pos="0 0 0.0584">
                       <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
                       <joint name="finger_joint1" class="finger"/>
                       <geom mesh="finger_0" material="off_white" class="visual"/>
                       <geom mesh="finger_1" material="black" class="visual"/>
-  					<geom class="collision" type="box" pos="0.00000 0.01265 0.04490" size="0.00900 0.00175 0.00900" euler="0.00000 0.00000 0.00000"/> <!-- fingertip -->
-  					<geom class="collision" type="box" pos="0.00000 0.01760 0.02570" size="0.00900 0.00340 0.00980" euler="0.52360 0.00000 0.00000"/> <!-- mphalanx -->
-  					<geom class="collision" type="box" pos="0.00000 0.01840 0.00950" size="0.01050 0.00680 0.00950" euler="0.00000 0.00000 0.00000"/> <!-- pphalanx -->
+  					<geom class="c_r-hand" type="box" pos="0.00000 0.01265 0.04490" size="0.00900 0.00175 0.00900" euler="0.00000 0.00000 0.00000"/> <!-- fingertip -->
+  					<geom class="c_r-hand" type="box" pos="0.00000 0.01760 0.02570" size="0.00900 0.00340 0.00980" euler="0.52360 0.00000 0.00000"/> <!-- mphalanx -->
+  					<geom class="c_r-hand" type="box" pos="0.00000 0.01840 0.00950" size="0.01050 0.00680 0.00950" euler="0.00000 0.00000 0.00000"/> <!-- pphalanx -->
                       <geom class="fingertip_pad_collision_1"/>
                       <geom class="fingertip_pad_collision_2"/>
                       <geom class="fingertip_pad_collision_3"/>
@@ -119,9 +119,9 @@
                       <joint name="finger_joint2" class="finger"/>
                       <geom mesh="finger_0" material="off_white" class="visual"/>
                       <geom mesh="finger_1" material="black" class="visual"/>
-  					<geom class="collision" type="box" pos="0.00000 0.01265 0.04490" size="0.00900 0.00175 0.00900" euler="0.00000 0.00000 0.00000"/> <!-- fingertip -->
-  					<geom class="collision" type="box" pos="0.00000 0.01760 0.02570" size="0.00900 0.00340 0.00980" euler="0.52360 0.00000 0.00000"/> <!-- mphalanx -->
-  					<geom class="collision" type="box" pos="0.00000 0.01840 0.00950" size="0.01050 0.00680 0.00950" euler="0.00000 0.00000 0.00000"/> <!-- pphalanx -->
+  					<geom class="c_r-hand" type="box" pos="0.00000 0.01265 0.04490" size="0.00900 0.00175 0.00900" euler="0.00000 0.00000 0.00000"/> <!-- fingertip -->
+  					<geom class="c_r-hand" type="box" pos="0.00000 0.01760 0.02570" size="0.00900 0.00340 0.00980" euler="0.52360 0.00000 0.00000"/> <!-- mphalanx -->
+  					<geom class="c_r-hand" type="box" pos="0.00000 0.01840 0.00950" size="0.01050 0.00680 0.00950" euler="0.00000 0.00000 0.00000"/> <!-- pphalanx -->
                       <geom class="fingertip_pad_collision_1"/>
                       <geom class="fingertip_pad_collision_2"/>
                       <geom class="fingertip_pad_collision_3"/>
