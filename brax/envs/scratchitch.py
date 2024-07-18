@@ -35,7 +35,6 @@ class ScratchItch(PipelineEnv):
 
     def __init__(
         self,
-        vertical_reward_weight: float = 1.0,
         ctrl_cost_weight: float = 1e-6,
         reset_noise_scale=5e-3,
         backend="mjx",
@@ -44,8 +43,6 @@ class ScratchItch(PipelineEnv):
         """Creates a Hopper environment.
 
         Args:
-          forward_reward_weight: Weight for the forward reward, i.e. velocity in
-            x-direction.
           ctrl_cost_weight: Weight for the control cost.
           reset_noise_scale: Scale of noise to add to reset states.
           backend: str, the physics backend to use
@@ -92,7 +89,6 @@ class ScratchItch(PipelineEnv):
 
         super().__init__(sys=self.sys, backend=backend, **kwargs)
 
-        self._vertical_reward_weight = vertical_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight
         self._reset_noise_scale = reset_noise_scale
         # self.actuator_classes = self._get_actuator_classes(self.path)
