@@ -64,8 +64,6 @@ class ScratchItch(PipelineEnv):
                     "opt.ls_iterations": 4,
                 }
             )
-        #sys = mjcf.load(path)
-        #sys = mjcf.load(path)
 
         self.panda_actuators_ids = []
         self.humanoid_actuators_ids = []
@@ -119,8 +117,6 @@ class ScratchItch(PipelineEnv):
         metrics = {
             "reward_dist": zero,
             "reward_ctrl": zero,
-            "z_position": zero,
-            # "z_velocity": zero,
         }
         return State(pipeline_state, obs, reward, done, metrics)
 
@@ -130,13 +126,6 @@ class ScratchItch(PipelineEnv):
         assert pipeline_state0 is not None
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
-        END_EFFECTOR_IDX = 6
-        # z_velocity = (
-        #     pipeline_state.x.pos[END_EFFECTOR_IDX, 2]
-        #     - pipeline_state0.x.pos[END_EFFECTOR_IDX, 2]
-        # ) / self.dt
-        # #
-        # vertical_reward = self._vertical_reward_weight * (-z_velocity)
         ctrl_cost = - self._ctrl_cost_weight * jp.sum(jp.square(action))
         robo_obs = self._get_robo_obs(pipeline_state)
         human_obs = self._get_human_obs(pipeline_state)
@@ -150,7 +139,6 @@ class ScratchItch(PipelineEnv):
         state.metrics.update(
             reward_dist = r_dist,
             reward_ctrl = -ctrl_cost,
-            z_position=pipeline_state.x.pos[END_EFFECTOR_IDX, 2],
         )
 
         return state.replace(
@@ -159,16 +147,15 @@ class ScratchItch(PipelineEnv):
 
     # TODO: actually whether or not they make contact should not be used in the observation funciton but in the reward
     # observation should only include the distance from end effectors to the target which I can find with .site_xpos or .geom_xpos
-    # TODO: double check if need [:, idx] possible I only need [idx] for indexing
     def _get_robo_obs(self, pipeline_state: base.State) -> jax.Array:
         """Returns the environment observations."""
         position = pipeline_state.q
         velocity = pipeline_state.qd
         _, distance_to_target = self._check_distance_and_contact(pipeline_state, self.sys, self.target_idx, self.panda_left_finger_idx)
-        tool_orientation = pipeline_state.xquat[:, self.panda_effector_idx]
+        tool_orientation = pipeline_state.xquat[self.panda_effector_idx]
         target_pos, _ = self._get_geom_and_size(pipeline_state, self.sys, self.target_idx)
-        human_uarm_pos = pipeline_state.xpos[:, self.human_tuarm_idx]
-        human_larm_pos = pipeline_state.xpos[:, self.human_tlarm_idx]
+        human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
+        human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
         return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
@@ -179,10 +166,10 @@ class ScratchItch(PipelineEnv):
         position = pipeline_state.q
         velocity = pipeline_state.qd
         _, distance_to_target = self._check_distance_and_contact(pipeline_state, self.sys, self.target_idx, self.panda_left_finger_idx)
-        tool_orientation = pipeline_state.xquat[:, self.panda_effector_idx]
+        tool_orientation = pipeline_state.xquat[self.panda_effector_idx]
         target_pos, _ = self._get_geom_and_size(pipeline_state, self.sys, self.target_idx)
-        human_uarm_pos = pipeline_state.xpos[:, self.human_tuarm_idx]
-        human_larm_pos = pipeline_state.xpos[:, self.human_tlarm_idx]
+        human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
+        human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
         return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     

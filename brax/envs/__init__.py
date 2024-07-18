@@ -33,6 +33,7 @@ from brax.envs import walker2d
 from brax.envs import lite_up
 from brax.envs import panda
 from brax.envs import wheelchair
+from brax.envs import scratchitch
 from brax.envs.base import Env, PipelineEnv, State, Wrapper
 from brax.envs.wrappers import training
 
@@ -52,6 +53,7 @@ _envs = {
     "liteup": lite_up.LiteUp,
     "panda": panda.Panda,
     "wheelchair": wheelchair.Wheelchair,
+    "scratchitch": scratchitch.ScratchItch,
 }
 
 
