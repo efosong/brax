@@ -72,9 +72,11 @@
 
   <default>
     <default class="chair">
+      <geom contype="0" conaffinity="0"/>
       <material specular="0.5" shininess="0.25"/>
     </default>
   <default class="humanoid">
+      <geom contype="0" conaffinity="0"/>
 		<default class="c_h-right-arm">
 			<geom contype="32" conaffinity="5" />
 		</default>
@@ -89,6 +91,7 @@
       <material specular="0.5" rgba="0.4 0.33 0.26 1.0"/>
   </default>
   <default class="panda">
+      <geom contype="0" conaffinity="0"/>
       <joint armature="0.1" damping="1" axis="0 0 1" range="-2.8973 2.8973"/>
       <general dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973" forcerange="-87 87"/>
       <default class="finger">
@@ -99,13 +102,11 @@
       <geom type="mesh" contype="0" conaffinity="0" group="2"/>
     </default>
     <default class="disabled_collision">
-      <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.5"/>
+      <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
 	</default>
     <default class="collision">
-		<geom contype="1" conaffinity="1" group="3" rgba="1 0 0 0.5"/>
-
 		<default class="c_r-hand">
-			<geom contype="4" conaffinity="33" group="3" rgba="0 0 1 0.5"/>
+			<geom contype="4" conaffinity="33" group="3" rgba="0 0 1 0.1"/>
             <default class="fingertip_pad_collision_1">
               <geom type="box" size="0.0085 0.004 0.0085" pos="0 0.0055 0.0445"/>
             </default>
@@ -123,10 +124,10 @@
             </default>
 		</default>
 		<default class="c_r-other">
-			<geom contype="2" conaffinity="0" group="3" rgba="0 1 0 0.5"/>
+			<geom contype="2" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
 		</default>
 		<default class="c_chair">
-			<geom contype="1" conaffinity="52" group="3" rgba="1 0 0 0.5"/>
+			<geom contype="1" conaffinity="52" group="3" rgba="1 0 0 0.1"/>
 		</default>
 
     </default>
