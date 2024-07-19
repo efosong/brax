@@ -99,7 +99,9 @@ class ScratchItch(PipelineEnv):
         rng_pos, rng_vel = jax.random.split(rng, 2)
 
         low, hi = -self._reset_noise_scale, self._reset_noise_scale
-        qpos = self.sys.init_q + jax.random.uniform(
+        init_q = self.sys.mj_model.keyframe("init").qpos
+        #init_q = self.sys.init_q
+        qpos = init_q + jax.random.uniform(
             rng_pos, (self.sys.q_size(),), minval=low, maxval=hi
         )
         qvel = jax.random.uniform(rng_vel, (self.sys.qd_size(),), minval=low, maxval=hi)
@@ -108,7 +110,23 @@ class ScratchItch(PipelineEnv):
 
         robo_obs = self._get_robo_obs(pipeline_state)
         human_obs = self._get_human_obs(pipeline_state)
-        obs = jp.concatenate((robo_obs, human_obs))
+        #obs = jp.concatenate((robo_obs, human_obs))
+        obs = jp.concatenate((
+            robo_obs["position"],
+            robo_obs["velocity"],
+            robo_obs["distance_to_target"].reshape((1,)),
+            robo_obs["tool_orientation"],
+            robo_obs["target_pos"],
+            robo_obs["human_uarm_pos"],
+            robo_obs["human_larm_pos"],
+            human_obs["position"],
+            human_obs["velocity"],
+            human_obs["distance_to_target"].reshape((1,)),
+            human_obs["tool_orientation"],
+            human_obs["target_pos"],
+            human_obs["human_uarm_pos"],
+            human_obs["human_larm_pos"],
+        ))
         reward, done, zero = jp.zeros(3)
         metrics = {
             "reward_dist": zero,
@@ -122,19 +140,34 @@ class ScratchItch(PipelineEnv):
         assert pipeline_state0 is not None
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
-        ctrl_cost = - self._ctrl_cost_weight * jp.sum(jp.square(action))
+        ctrl_cost = -self._ctrl_cost_weight * jp.sum(jp.square(action))
         robo_obs = self._get_robo_obs(pipeline_state)
         human_obs = self._get_human_obs(pipeline_state)
-        obs = jp.concatenate((robo_obs, human_obs))
-        r_dist = - robo_obs[2]
-        
+        obs = jp.concatenate((
+            robo_obs["position"],
+            robo_obs["velocity"],
+            robo_obs["distance_to_target"].reshape((1,)),
+            robo_obs["tool_orientation"],
+            robo_obs["target_pos"],
+            robo_obs["human_uarm_pos"],
+            robo_obs["human_larm_pos"],
+            human_obs["position"],
+            human_obs["velocity"],
+            human_obs["distance_to_target"].reshape((1,)),
+            human_obs["tool_orientation"],
+            human_obs["target_pos"],
+            human_obs["human_uarm_pos"],
+            human_obs["human_larm_pos"],
+        ))
+        r_dist = -robo_obs["distance_to_target"]
+        #jax.debug.print("r_dist: {}", r_dist)
         # jax.debug.print("r_dist: {}", r_dist)
         # jax.debug.print("ctrl_cost: {}", ctrl_cost)
         reward = r_dist + ctrl_cost
         done = 0.0
         state.metrics.update(
             reward_dist = r_dist,
-            reward_ctrl = -ctrl_cost,
+            reward_ctrl = ctrl_cost,
         )
 
         return state.replace(
@@ -152,8 +185,16 @@ class ScratchItch(PipelineEnv):
         target_pos, _ = self._get_geom_and_size(pipeline_state, self.sys, self.target_idx)
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
-
-        return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
+        return {
+            "position": position,
+            "velocity": velocity,
+            "distance_to_target": distance_to_target,
+            "tool_orientation": tool_orientation,
+            "target_pos": target_pos,
+            "human_uarm_pos": human_uarm_pos,
+            "human_larm_pos": human_larm_pos
+        }
+        #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
 
     # TODO: Forces this is the only way human and robo obs are different
@@ -166,8 +207,16 @@ class ScratchItch(PipelineEnv):
         target_pos, _ = self._get_geom_and_size(pipeline_state, self.sys, self.target_idx)
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
-
-        return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
+        return {
+            "position": position,
+            "velocity": velocity,
+            "distance_to_target": distance_to_target,
+            "tool_orientation": tool_orientation,
+            "target_pos": target_pos,
+            "human_uarm_pos": human_uarm_pos,
+            "human_larm_pos": human_larm_pos
+        }
+        #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
     
     # TODO: Integrates the following functions into the step function
@@ -228,7 +277,10 @@ class ScratchItch(PipelineEnv):
         surface_distance = center_distance - (size1 + size2)
         is_contact = surface_distance <= 0
     
-        return (is_contact, surface_distance)
+        # TODO: The surface distance calculations seem wrong
+        # we can jsut use the center distance for now.
+        #return (is_contact, surface_distance)
+        return (is_contact, center_distance)
     
     def _body_geom_ids(self, mjmodel: mujoco.MjModel, body_id: int) -> jax.Array:
         """Returns the geom ids of a body."""
