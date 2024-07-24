@@ -10,6 +10,7 @@ import mujoco
 from mujoco import mj_id2name, mj_name2id
 from enum import IntEnum
 from mujoco.mjx._src.support import contact_force
+import numpy as np
 
 # import xml.etree.ElementTree as ET
 
@@ -77,13 +78,14 @@ class ScratchItch(PipelineEnv):
         self.target_idx = mj_name2id(mjmodel, GEOM_IDX, "target")
 
         BODY_IDX = 1
-        self.panda_right_finger_idx = mj_name2id(mjmodel, GEOM_IDX, "fingertip_right")
+        self.panda_right_finger_idx = mj_name2id(mjmodel, GEOM_IDX, "finger_tip_right")
         self.panda_left_finger_idx = mj_name2id(mjmodel, GEOM_IDX, "finger_tip_left")
         self.panda_effector_idx = mj_name2id(mjmodel, BODY_IDX, "hand")
 
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
-
+        self.contact_force = jax.vmap(contact_force, in_axes=(None, 0, None, None))
+        
         n_frames = 4
         kwargs["n_frames"] = kwargs.get("n_frames", n_frames)
 
@@ -119,6 +121,7 @@ class ScratchItch(PipelineEnv):
             robo_obs["target_pos"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
+            robo_obs["force_on_target"].reshape((6,)),
             human_obs["position"],
             human_obs["velocity"],
             human_obs["distance_to_target"].reshape((1,)),
@@ -126,6 +129,7 @@ class ScratchItch(PipelineEnv):
             human_obs["target_pos"],
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
+            robo_obs["force_on_target"].reshape((6,)),            
         ))
         reward, done, zero = jp.zeros(3)
         metrics = {
@@ -151,6 +155,7 @@ class ScratchItch(PipelineEnv):
             robo_obs["target_pos"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
+            robo_obs["force_on_target"].reshape((6,)),
             human_obs["position"],
             human_obs["velocity"],
             human_obs["distance_to_target"].reshape((1,)),
@@ -158,6 +163,7 @@ class ScratchItch(PipelineEnv):
             human_obs["target_pos"],
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
+            human_obs["force_on_target"].reshape((6,)),
         ))
         r_dist = -robo_obs["distance_to_target"]
         #jax.debug.print("r_dist: {}", r_dist)
@@ -173,6 +179,7 @@ class ScratchItch(PipelineEnv):
         return state.replace(
             pipeline_state=pipeline_state, obs = obs, reward=reward, done=done
         )
+        # return (robo_obs, human_obs, target_contact_force)
 
     # TODO: actually whether or not they make contact should not be used in the observation funciton but in the reward
     # observation should only include the distance from end effectors to the target which I can find with .site_xpos or .geom_xpos
@@ -180,11 +187,13 @@ class ScratchItch(PipelineEnv):
         """Returns the environment observations."""
         position = pipeline_state.q
         velocity = pipeline_state.qd
-        _, distance_to_target = self._check_distance_and_contact(pipeline_state, self.sys, self.target_idx, self.panda_left_finger_idx)
+        distance_to_target = self._check_distance_and_contact(pipeline_state, self.target_idx, self.panda_left_finger_idx)
         tool_orientation = pipeline_state.xquat[self.panda_effector_idx]
-        target_pos, _ = self._get_geom_and_size(pipeline_state, self.sys, self.target_idx)
+        target_pos = self._get_geom_and_size(pipeline_state, self.target_idx)
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
+        forces = self._get_contact_force(pipeline_state)
+        force_on_target = self._get_force_on_target(pipeline_state, forces, self.target_idx, self.panda_left_finger_idx, self.panda_right_finger_idx)
         return {
             "position": position,
             "velocity": velocity,
@@ -192,7 +201,9 @@ class ScratchItch(PipelineEnv):
             "tool_orientation": tool_orientation,
             "target_pos": target_pos,
             "human_uarm_pos": human_uarm_pos,
-            "human_larm_pos": human_larm_pos
+            "human_larm_pos": human_larm_pos,
+            "forces": forces,
+            "force_on_target": force_on_target
         }
         #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
@@ -202,11 +213,13 @@ class ScratchItch(PipelineEnv):
         """Returns the environment observations."""
         position = pipeline_state.q
         velocity = pipeline_state.qd
-        _, distance_to_target = self._check_distance_and_contact(pipeline_state, self.sys, self.target_idx, self.panda_left_finger_idx)
+        distance_to_target = self._check_distance_and_contact(pipeline_state, self.target_idx, self.panda_left_finger_idx)
         tool_orientation = pipeline_state.xquat[self.panda_effector_idx]
-        target_pos, _ = self._get_geom_and_size(pipeline_state, self.sys, self.target_idx)
+        target_pos = self._get_geom_and_size(pipeline_state, self.target_idx)
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
+        forces = self._get_contact_force(pipeline_state)
+        force_on_target = self._get_force_on_target(pipeline_state, forces, self.target_idx, self.panda_left_finger_idx, self.panda_right_finger_idx)
         return {
             "position": position,
             "velocity": velocity,
@@ -214,7 +227,9 @@ class ScratchItch(PipelineEnv):
             "tool_orientation": tool_orientation,
             "target_pos": target_pos,
             "human_uarm_pos": human_uarm_pos,
-            "human_larm_pos": human_larm_pos
+            "human_larm_pos": human_larm_pos,
+            "forces": forces,
+            "force_on_target": force_on_target
         }
         #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
@@ -222,69 +237,125 @@ class ScratchItch(PipelineEnv):
     # TODO: Integrates the following functions into the step function
     
     # TODO: Replace some of this with mj_geomDistance function which seems to do alot of this already ...
-    def _get_geom_and_size(self, pipeline_state: base.State, mjmodel: mujoco.MjModel, geom_id: int) -> Tuple[jax.Array, jax.Array]:
+    def _get_geom_and_size(self, pipeline_state: base.State, geom_id: int) -> Tuple[jax.Array, jax.Array]:
         """Returns the geoms and sizes of the environment."""
         # print("state", pipeline_state)
         # print("model", mjmodel)
         geom_xpos = pipeline_state.geom_xpos[geom_id]
-        geom_size = mjmodel.geom_size[geom_id] # Would it be better to store this as a list in init? 
-        geom_type = jp.array(mjmodel.geom_type)[geom_id]
+        # geom_size = mjmodel.geom_size[geom_id] # Would it be better to store this as a list in init? 
+        # geom_type = jp.array(mjmodel.geom_type)[geom_id]
         
 
-        def sphere_size(size):
-            return size[0]  # radius
+        # def sphere_size(size):
+        #     return size[0]  # radius
         
-        def capsule_size(size):
-            return size[0] + size[1]  # radius + half-length
+        # def capsule_size(size):
+        #     return size[0] + size[1]  # radius + half-length
         
-        def ellipsoid_size(size):
-            return jp.max(size)  # Max semi-axis
+        # def ellipsoid_size(size):
+        #     return jp.max(size)  # Max semi-axis
         
-        def cylinder_size(size):
-            return jp.max(jp.array([size[0], size[1]]))  # Max of radius and half-length
+        # def cylinder_size(size):
+        #     return jp.max(jp.array([size[0], size[1]]))  # Max of radius and half-length
         
-        def box_size(size):
-            return jp.linalg.norm(size)  # Diagonal half-length
+        # def box_size(size):
+        #     return jp.linalg.norm(size)  # Diagonal half-length
         
-        def default_size(size):
-            return jp.max(size) # default to max for unsupported types
+        # def default_size(size):
+        #     return jp.max(size) # default to max for unsupported types
         
-        size_funcs = [
-            default_size,
-            default_size,
-            sphere_size,
-            capsule_size,
-            ellipsoid_size,
-            cylinder_size,
-            box_size,
-            default_size
-        ]
+        # size_funcs = [
+        #     default_size,
+        #     default_size,
+        #     sphere_size,
+        #     capsule_size,
+        #     ellipsoid_size,
+        #     cylinder_size,
+        #     box_size,
+        #     default_size
+        # ]
 
 
-        effective_size = jax.lax.switch(geom_type, size_funcs, geom_size)
+        # effective_size = jax.lax.switch(geom_type, size_funcs, geom_size)
 
         # broadcast effective_size to match the number of environments
-        effective_size = jp.broadcast_to(effective_size, (geom_xpos.shape[0],))
+        # effective_size = jp.broadcast_to(effective_size, (geom_xpos.shape[0],))
 
-        return geom_xpos, effective_size
+        # return geom_xpos, effective_size
+
+        return geom_xpos
     
-    def _check_distance_and_contact(self, pipeline_state: base.State, mjmodel: mujoco.MjModel, geom1_id: int, geom2_id: int) -> Tuple[jax.Array, jax.Array]:
+    def _check_distance_and_contact(self, pipeline_state: base.State, geom1_id: int, geom2_id: int) -> Tuple[jax.Array, jax.Array]:
         
-        pos1, size1 = self._get_geom_and_size(pipeline_state, mjmodel, geom1_id)
-        pos2, size2 = self._get_geom_and_size(pipeline_state, mjmodel, geom2_id)
+        # pos1, size1 = self._get_geom_and_size(pipeline_state, mjmodel, geom1_id)
+        # pos2, size2 = self._get_geom_and_size(pipeline_state, mjmodel, geom2_id)
+
+        pos1 = self._get_geom_and_size(pipeline_state, geom1_id)
+        pos2 = self._get_geom_and_size(pipeline_state, geom2_id)
     
         center_distance = jp.linalg.norm(pos1 - pos2, axis=-1)
-        surface_distance = center_distance - (size1 + size2)
-        is_contact = surface_distance <= 0
+        # surface_distance = center_distance - (size1 + size2)
+        # is_contact = surface_distance <= 0
     
         # TODO: The surface distance calculations seem wrong
         # we can jsut use the center distance for now.
         #return (is_contact, surface_distance)
-        return (is_contact, center_distance)
+        # return (is_contact, center_distance)
+        return center_distance
     
     def _body_geom_ids(self, mjmodel: mujoco.MjModel, body_id: int) -> jax.Array:
         """Returns the geom ids of a body."""
         return jp.where(mjmodel.geom_bodyid == body_id)[0]
+    
+    def _get_contact_force(self, pipeline_state: base.State) -> jax.Array:
+        """Returns the contact force of a geom."""
+        forces = [contact_force(self.sys, pipeline_state, i, False) for i in range(pipeline_state.ncon)]
+
+        return jp.array(forces)
+    
+    def _get_force_on_target(self, pipeline_state: base.State, forces: jax.Array, target_idx: int, panda_left_finger_idx: int, panda_right_finger_idx: int) -> jax.Array:
+        """Returns the force on the target."""
+        
+        target_contacts_left = (pipeline_state.contact.geom == jp.array([panda_left_finger_idx, target_idx])) | (pipeline_state.contact.geom == jp.array([target_idx, panda_left_finger_idx]))
+        target_contacts_right = (pipeline_state.contact.geom == jp.array([panda_right_finger_idx, target_idx])) | (pipeline_state.contact.geom == jp.array([target_idx, panda_right_finger_idx]))
+
+        # print(f"target_contacts_left: {target_contacts_left.shape}")
+        # print(f"target_contacts_right: {target_contacts_right.shape}")
+        # print(f"forces: {forces.shape}")
+
+        mask_left = jp.all(target_contacts_left, axis=1)
+        mask_right = jp.all(target_contacts_right, axis=1)
+
+        # print(f"mask_left: {mask_left.shape}")
+        # print(f"mask_right: {mask_right}")
+
+        left_force = jp.where(mask_left[:, None], forces, 0)
+        right_force = jp.where(mask_right[:, None], forces, 0)
+        
+
+        combined_force = jp.concatenate([jp.expand_dims(left_force, axis=0), 
+                            jp.expand_dims(right_force, axis=0)], 
+                            axis=1)
+        # total_force_on_target = jp.sum(, axis=1)
+        total_force_on_target = jp.sum(combined_force, axis=1)
+        return total_force_on_target
+    
+    # def _get_force_on_target(self, pipeline_state: base.State, forces: jax.Array, target_idx, panda_left_finger_idx, panda_right_finger_idx) -> jax.Array:
+    #     """Returns the force on the target."""
+    #     target_contacts_left = pipeline_state.contact.geom == jp.array([target_idx, panda_left_finger_idx])
+    #     target_contacts_right = pipeline_state.contact.geom == jp.array([target_idx, self.panda_right_finger_idx])
+
+    #     jax.debug.print("target_contacts_left: {}", jp.all(target_contacts_left))   
+    #     target_contact_left_ids  = jp.where(jp.all(target_contacts_left, axis=1))[0]
+    #     target_contact_right_ids = jp.where(jp.all(target_contacts_right, axis=1))[0]
+
+    #     all_ids = jp.concatenate((target_contact_left_ids, target_contact_right_ids))
+
+    #     total_force_on_target = jp.sum(forces[all_ids], axis=0)
+
+        
+    #     return total_force_on_target
+
 
     
     # def _get_target_contacts(self, pipeline_state: base.State, mjmodel: mujoco.MjModel) -> jax.Array:

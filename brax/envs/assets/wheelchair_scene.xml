@@ -107,7 +107,7 @@
     <default class="collision">
 		<default class="c_r-hand">
 			<geom contype="4" conaffinity="33" group="3" rgba="0 0 1 0.1"/>
-            <default class="fingertip_pad_collision_1">
+            <!-- <default class="fingertip_pad_collision_1">
               <geom type="box" size="0.0085 0.004 0.0085" pos="0 0.0055 0.0445"/>
             </default>
             <default class="fingertip_pad_collision_2">
@@ -121,7 +121,7 @@
             </default>
             <default class="fingertip_pad_collision_5">
               <geom type="box" size="0.003 0.002 0.0035" pos="-0.0055 0.002 0.0395"/>
-            </default>
+            </default> -->
 		</default>
 		<default class="c_r-other">
 			<geom contype="2" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
