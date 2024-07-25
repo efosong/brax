@@ -96,38 +96,23 @@
                     <geom mesh="hand_2" name="panda_hand_mesh_2" material="black" class="visual"/>
                     <geom mesh="hand_3" name="panda_hand_mesh_3" material="white" class="visual"/>
                     <geom mesh="hand_4" name="panda_hand_mesh_4" material="off_white" class="visual"/>
-  				  <!--
-  	              <geom class="collision" type="box" pos="0.000 0.000 0.030" size="0.020 0.100 0.040" />
-  				  -->
   	                <geom class="c_r-hand" name="panda_hand4" type="box" mesh="hand_3" />
-                    <body name="left_finger" pos="0 0 0.0584">
+                    <body name="left_finger" pos="0 0.03 0.0584">
                       <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
-                      <joint name="finger_joint1" class="finger"/>
                       <geom mesh="finger_0" name = "finger_0_left" material="off_white" class="visual"/>
                       <geom mesh="finger_1" name = "finger_1_left" material="black" class="visual"/>
-  					<geom class="c_r-hand" name = "finger_tip_left" type="box" pos="0.00000 0.01265 0.04490" size="0.00900 0.00175 0.00900" euler="0.00000 0.00000 0.00000"/> <!-- fingertip -->
-  					<geom class="c_r-hand" name="panda_hand5" type="box" pos="0.00000 0.01760 0.02570" size="0.00900 0.00340 0.00980" euler="0.52360 0.00000 0.00000"/> <!-- mphalanx -->
-  					<geom class="c_r-hand" name="panda_hand6" type="box" pos="0.00000 0.01840 0.00950" size="0.01050 0.00680 0.00950" euler="0.00000 0.00000 0.00000"/> <!-- pphalanx -->
-                      <!-- <geom class="fingertip_pad_collision_1"/>
-                      <geom class="fingertip_pad_collision_2"/>
-                      <geom class="fingertip_pad_collision_3"/>
-                      <geom class="fingertip_pad_collision_4"/>
-                      <geom class="fingertip_pad_collision_5"/> -->
+				    <geom name="right_finger_collision" class="c_r-hand" type="box" mesh="finger_0" />
                     </body>
-                    <body name="right_finger" pos="0 0 0.0584" quat="0 0 0 1">
+                    <body name="right_finger" pos="0 -0.03 0.0584" quat="0 0 0 1">
                       <inertial mass="0.015" pos="0 0 0" diaginertia="2.375e-6 2.375e-6 7.5e-7"/>
-                      <joint name="finger_joint2" class="finger"/>
                       <geom mesh="finger_0" name = "finger_0_right" material="off_white" class="visual"/>
                       <geom mesh="finger_1" name = "finger_1_right" material="black" class="visual"/>
-  					<geom class="c_r-hand" name = "finger_tip_right" type="box" pos="0.00000 0.01265 0.04490" size="0.00900 0.00175 0.00900" euler="0.00000 0.00000 0.00000"/> <!-- fingertip -->
-  					<geom class="c_r-hand" name="panda_hand7" type="box" pos="0.00000 0.01760 0.02570" size="0.00900 0.00340 0.00980" euler="0.52360 0.00000 0.00000"/> <!-- mphalanx -->
-  					<geom class="c_r-hand" name="panda_hand8" type="box" pos="0.00000 0.01840 0.00950" size="0.01050 0.00680 0.00950" euler="0.00000 0.00000 0.00000"/> <!-- pphalanx -->
-                      <!-- <geom class="fingertip_pad_collision_1" name="fingertip_pad_collision_1"/>
-                      <geom class="fingertip_pad_collision_2" name="fingertip_pad_collision_2"/>
-                      <geom class="fingertip_pad_collision_3" name="fingertip_pad_collision_3"/>
-                      <geom class="fingertip_pad_collision_4" name="fingertip_pad_collision_4"/>
-                      <geom class="fingertip_pad_collision_5" name="fingertip_pad_collision_5"/> -->
+				      <geom name="left_finger_collision" class="c_r-hand" type="box" mesh="finger_0" />
                     </body>
+					<body name="scratcher" childclass="c_r-tool" pos="0 0 0.1" quat="0 0 0 1">
+					  <geom name="scratcher_base" type="box" pos="0 0 0" size="0.03 0.03 0.03"/> 
+					  <geom name="scratcher_stick" type="capsule" pos="0 0 0.025" size="0.01 0.05"/> 
+					</body>
                   </body>
                 </body>
               </body>
