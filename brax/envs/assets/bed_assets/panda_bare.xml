@@ -109,10 +109,10 @@
                       <geom mesh="finger_1" name = "finger_1_right" material="black" class="visual"/>
 				      <geom name="left_finger_collision" class="c_r-hand" type="box" mesh="finger_0" />
                     </body>
-					<body name="scratcher" childclass="c_r-tool" pos="0 0 0.1" quat="0 0 0 1">
-					  <geom name="scratcher_base" type="box" pos="0 0 0" size="0.03 0.03 0.03"/> 
-					  <geom name="scratcher_stick" type="capsule" pos="0 0 0.025" size="0.01 0.05"/> 
-					  <site name="scratcher_point" type="sphere" pos="0 0 0.075" size="0.010" rgba="0 1 1 1"/> 
+					<body name="wiper" childclass="c_r-tool" pos="0 0 0.1" quat="0 0 0 1">
+					  <geom name="wiper_base" type="box" pos="0 0 0" size="0.03 0.03 0.03"/> 
+					  <geom name="wiper_pad" type="box" pos="0 0 0.03" size="0.05 0.05 0.006" rgba="1 0 0 1"/> 
+					  <site name="wiper_centre" type="sphere" pos="0 0 0.03" size="0.010" rgba="0 1 1 1"/> 
 					</body>
                   </body>
                 </body>
