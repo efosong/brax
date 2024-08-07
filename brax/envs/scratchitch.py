@@ -6,24 +6,12 @@ from brax.io import mjcf
 from etils import epath
 import jax
 from jax import numpy as jp
+from jax.scipy.spatial.transform import Rotation
 import mujoco 
 from mujoco import mj_id2name, mj_name2id
 from enum import IntEnum
 from mujoco.mjx._src.support import contact_force
 import numpy as np
-
-# import xml.etree.ElementTree as ET
-
-class GeomType(IntEnum):
-    PLANE = 0
-    HFIELD = 1
-    SPHERE = 2
-    CAPSULE = 3
-    ELLIPSOID = 4
-    CYLINDER = 5
-    BOX = 6
-    MESH = 7
-
 
 class ScratchItch(PipelineEnv):
     
@@ -37,14 +25,18 @@ class ScratchItch(PipelineEnv):
     def __init__(
         self,
         ctrl_cost_weight: float = 1e-6,
+        dist_reward_weight: float = 1.0,
+        scratching_reward_weight: float = 1.0,
         reset_noise_scale=5e-3,
         backend="mjx",
         **kwargs
     ):
-        """Creates a Hopper environment.
+        """Creates a ScratchItch environment.
 
         Args:
           ctrl_cost_weight: Weight for the control cost.
+          dist_reward_weight: Weight for the distance reward.
+          scratching_reward_weight: Weight for the scratching reward          
           reset_noise_scale: Scale of noise to add to reset states.
           backend: str, the physics backend to use
           **kwargs: Arguments that are passed to the base class.
@@ -75,9 +67,10 @@ class ScratchItch(PipelineEnv):
                 self.humanoid_actuators_ids.append(i)
 
         GEOM_IDX = 5 # 5 is the index of the geom tag in the xml file
-        self.target_idx = mj_name2id(mjmodel, GEOM_IDX, "target")
-
         BODY_IDX = 1
+        
+        self.target_idx = mj_name2id(mjmodel, GEOM_IDX, "target")
+        self.target_body_idx = mj_name2id(mjmodel, BODY_IDX, "target_body")
         # self.panda_right_finger_idx = mj_name2id(mjmodel, GEOM_IDX, "finger_tip_right")
         # self.panda_left_finger_idx = mj_name2id(mjmodel, GEOM_IDX, "finger_tip_left")
         self.panda_effector_idx = mj_name2id(mjmodel, BODY_IDX, "hand")
@@ -87,6 +80,12 @@ class ScratchItch(PipelineEnv):
 
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
+
+        self.human_tuarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_uarm")
+        self.human_tlarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_larm")
+
+        self.human_uarm_size = mjmodel.geom_size[self.human_tuarm_geom]
+        self.human_larm_size = mjmodel.geom_size[self.human_tlarm_geom]
         
         # self.contact_force = jax.vmap(contact_force, in_axes=(None, 0, None, None))
 
@@ -107,13 +106,16 @@ class ScratchItch(PipelineEnv):
         super().__init__(sys=self.sys, backend=backend, **kwargs)
 
         self._ctrl_cost_weight = ctrl_cost_weight
+        self._dist_reward_weight = dist_reward_weight
+        self._scratching_reward_weight = scratching_reward_weight
+        self._dist_scale = 0.1
         self._reset_noise_scale = reset_noise_scale
         # self.actuator_classes = self._get_actuator_classes(self.path)
         # self.humanoid_actuators, self.panda_actuators = self._identify_actuators(self.actuator_classes)
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
-        rng_pos, rng_vel = jax.random.split(rng, 2)
+        rng_pos, rng_vel, rng_target_pos, rng_target_arm = jax.random.split(rng, 4)
 
         low, hi = -self._reset_noise_scale, self._reset_noise_scale
         init_q = self.sys.mj_model.keyframe("init").qpos
@@ -124,6 +126,22 @@ class ScratchItch(PipelineEnv):
         qvel = jax.random.uniform(rng_vel, (self.sys.qd_size(),), minval=low, maxval=hi)
 
         pipeline_state = self.pipeline_init(qpos, qvel)
+
+        # print(f"Current Target Position: {pipeline_state.geom_xpos[self.target_idx]}")        
+        
+        # TODO: Figure out how to set the target position in the simulation
+        # target_pos = self._get_random_target(pipeline_state, rng_target_pos)
+        # target_pos = jax.device_get(target_pos_traced)
+        # print(f"Set target_pos: {target_pos}")
+        # jax.debug.print("Set target_pos: {}", target_pos)
+
+        new_target_xpos = pipeline_state.x.pos.at[self.target_body_idx].set(target_pos)
+        # pipeline_state = pipeline_state.replace(geom_xpos=new_target_xpos)
+        pipeline_state = pipeline_state.replace(x=pipeline_state.x.replace(pos=new_target_xpos))
+
+        # print("New Target Position: ", pipeline_state.geom_xpos[self.target_idx])
+        # jax.debug.print("New target_pos: {}", pipeline_state.geom_xpos[self.target_idx])
+
         robo_obs = self._get_robo_obs(pipeline_state)
         human_obs = self._get_human_obs(pipeline_state)
         #obs = jp.concatenate((robo_obs, human_obs))
@@ -160,6 +178,8 @@ class ScratchItch(PipelineEnv):
         pipeline_state0 = state.pipeline_state
         assert pipeline_state0 is not None
         pipeline_state = self.pipeline_step(pipeline_state0, action)
+        print(f"Stepping Target Position: {pipeline_state.geom_xpos[self.target_idx]}")
+        jax.debug.print("Stepping Target Position: {}", pipeline_state.geom_xpos[self.target_idx])
 
         ctrl_cost = -self._ctrl_cost_weight * jp.sum(jp.square(action))
         robo_obs = self._get_robo_obs(pipeline_state)
@@ -189,16 +209,18 @@ class ScratchItch(PipelineEnv):
             human_obs["human_joint_angles"],           
         ))
         
-        r_dist = -robo_obs["distance_to_target"]
-
-        # If the scratching reward doesn't work, try the commented out one instead
-
-        # This reward should mimick scratching but I'm not sure the scale is correct i.e. 0.005 might be too large or too small of a distance
-        r_scratching = jax.lax.select(jp.logical_and(jp.logical_and(jp.any(robo_obs["force_on_target"] != 0.0), jp.linalg.norm(robo_obs["force_on_target"][:3] <= 10)), (jp.linalg.norm(pipeline_state.site_xpos[self.panda_scratcher_tip_idx] - pipeline_state0.site_xpos[self.panda_scratcher_tip_idx])) > 0.005), 2.0, 0.0)
+        r_dist = self._dist_reward_weight*(1/jp.exp(self._dist_scale*robo_obs["distance_to_target"]**2))
         
-        # r_scratching = jax.lax.select(jp.logical_and(jp.any(robo_obs["force_on_target"] != 0.0), jp.linalg.norm(robo_obs["force_on_target"][:3])), 2.0, 0.0)
-        reward = r_dist + ctrl_cost + r_scratching
+        r_scratch_condition_1 = jp.any(human_obs["force_on_human"] != 0.0) # making contact with human arm
+        r_scratch_condition_2 = jp.linalg.norm(human_obs["force_on_human"][:3]) <= 10 # force on human arm is less than 10
+        r_scratch_condition_3 = robo_obs["distance_to_target"] <= 0.05 # distance to target is less than 0.05 (5cm?)
+        r_scratch_condition_4 = jp.linalg.norm(pipeline_state.site_xpos[self.panda_scratcher_tip_idx] - pipeline_state0.site_xpos[self.panda_scratcher_tip_idx]) > 0.005 # mimickeing scratcher (moving the scratcher tip around a little bit)
 
+        scratching_conditions_met = jp.all(jp.array([r_scratch_condition_1, r_scratch_condition_2, r_scratch_condition_3, r_scratch_condition_4]))
+
+        r_scratching = jp.where(scratching_conditions_met, 5.0, 0.0)
+
+        reward = r_dist + ctrl_cost + r_scratching
 
         done = 0.0
         state.metrics.update(
@@ -249,7 +271,7 @@ class ScratchItch(PipelineEnv):
 
     # TODO: Forces this is the only way human and robo obs are different
     def _get_human_obs(self, pipeline_state: base.State) -> jax.Array:
-        """Returns the environment observations."""
+        """Returns the environment observations"""
         # position = pipeline_state.q
         # velocity = pipeline_state.qd
         tool_position = pipeline_state.site_xpos[self.panda_scratcher_tip_idx]
@@ -281,25 +303,22 @@ class ScratchItch(PipelineEnv):
         }
         #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
-    
-    # TODO: Integrates the following functions into the step function
-    
-    # TODO: Replace some of this with mj_geomDistance function which seems to do alot of this already ...
+
     def _get_geom_pos(self, pipeline_state: base.State, geom_id: int) -> jax.Array:
-        """Returns the geoms and sizes of the environment."""
+        """Returns the geoms and sizes of the environment"""
 
         geom_xpos = pipeline_state.geom_xpos[geom_id]
 
         return geom_xpos
     
     def _get_site_pos(self, pipeline_state: base.State, site_id: int) -> jax.Array:
-
+        """Returns the site position"""
         site_xpos = pipeline_state.site_xpos[site_id]
 
         return site_xpos
     
     def _check_distance(self, pipeline_state: base.State, site_id: int, geom2_id: int) -> jax.Array:
-        
+        """Returns distance between a geom and a site"""
         pos1 = self._get_site_pos(pipeline_state, site_id)
         pos2 = self._get_geom_pos(pipeline_state, geom2_id)
     
@@ -308,11 +327,73 @@ class ScratchItch(PipelineEnv):
         return center_distance
     
     def _get_force_on_tool(self, pipeline_state, target_tool_ids: int, uarm_tool_id: int, larm_id:int) -> jax.Array:
+        """Return the force on the tool"""
         tool_target = contact_force(self.sys, pipeline_state, target_tool_ids, False)
         tool_uarm = contact_force(self.sys, pipeline_state, uarm_tool_id, False)
         tool_larm = contact_force(self.sys, pipeline_state, larm_id, False)
 
         return jp.sum(jp.vstack((tool_target, tool_uarm, tool_larm)), axis=0)
+    
+    # def _find_point_on_cylinder(self, height: float, radius: float, key: jax.random.PRNGKey) -> jax.Array:
+    #     """Returns a random point on a cylinder (shape of the humanoid arm)."""
+    #     theta = jax.random.uniform(key, minval=0, maxval=2*jp.pi)
+
+    #     z = jax.random.uniform(key, minval=-height, maxval=height)
+
+    #     x = radius * jp.cos(theta)
+    #     y = radius * jp.sin(theta)
+
+    #     local_point = jp.array([x, y, z])
+
+    #     distance_from_axis = jp.linalg.norm(jp.array([x, y]))
+    #     assert jp.allclose(distance_from_axis, radius, atol=1e-5), f"Point not on cylinder: Distance -- {distance_from_axis} Radius -- {radius}"
+
+    #     return local_point
+    
+    # def _map_local_to_global(self, local_pos: jax.Array, global_pos: jax.Array, global_orient: jax.Array) -> jax.Array:
+    #     """Maps a local position to a global position."""
+    #     global_orient = global_orient / jp.linalg.norm(global_orient) # normalize to ensure it is a unit quaternion
+    #     # TODO: check whether it would makes sense to use brax.math.rotate instead of jax.scipy.spatial.transform.Rotation
+    #     global_rot = Rotation.from_quat(global_orient)
+    #     rotated_pos = global_rot.apply(local_pos)
+    #     global_pos_result = global_pos + rotated_pos
+    #     print(f"Rotated position: {rotated_pos}")
+    #     print(f"Final global position: {global_pos_result}")
+
+    #     return global_pos_result
+    
+    # # def _get_pos_orientation(self, pipeline_state: base.State, geom_id: int, body_id: int) -> Tuple[jax.Array, jax.Array]:
+    # #     """Returns the position and orientation of a geom."""
+    # #     pos = pipeline_state.geom_xpos[geom_id]
+    # #     orient = pipeline_state.xquat[body_id]
+
+    # #     return pos, orient
+    
+    # def _get_random_target(self, pipeline_state: base.State, rng: jax.random.PRNGKey) -> jax.Array:
+    #     """Returns a random target position."""
+        
+    #     arm = jax.random.bernoulli(rng, 0.5)
+        
+    #     def process_arm(arm_geom_id, arm_body_id): # padding as jax complains otherwise
+            
+    #         max_size = 4
+    #         size = jp.pad(self.sys.mj_model.geom_size[arm_geom_id], (0, max_size - self.sys.mj_model.geom_size[arm_geom_id].shape[0]))
+    #         pos = jp.pad(pipeline_state.geom_xpos[arm_geom_id], (0, max_size - pipeline_state.geom_xpos[arm_geom_id].shape[0]))
+    #         orient = pipeline_state.xquat[arm_body_id]
+
+    #         return jp.array([size, pos, orient])
+        
+    #     uarm_data = process_arm(self.human_tuarm_geom, self.human_tuarm_idx)
+    #     larm_data = process_arm(self.human_tlarm_geom, self.human_tlarm_idx)
+    #     # print(upper_arm_data)
+    #     selected_data = jax.lax.select(arm == True, uarm_data, larm_data)
+
+    #     point_on_cylinder = self._find_point_on_cylinder(selected_data[0][1], selected_data[0][0], rng)
+    #     target_pos = self._map_local_to_global(point_on_cylinder, selected_data[1, :3], selected_data[2])
+
+    #     return target_pos
+            
+
 
     
     # def _body_geom_ids(self, mjmodel: mujoco.MjModel, body_id: int) -> jax.Array:
