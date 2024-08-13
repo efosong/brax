@@ -231,14 +231,14 @@ class BedBathing(PipelineEnv):
         distances = self._mask_contacts(distances_all, old_contact_vector)
         new_contact_vector = self._update_contact_vector(distances, old_contact_vector, self.target_threshold, human_obs["force_on_human"])
         
-        info = {"contact_vector": new_contact_vector}
+        contact_info = {"contact_vector": new_contact_vector}
 
         closest_distance = jp.min(distances)
         r_dist = self._dist_reward_weight*(1/jp.exp(self._dist_scale*closest_distance**2))
 
         n_contacts = jp.count_nonzero(new_contact_vector==0)
         n_old_contacts = jp.count_nonzero(old_contact_vector==0)
-        new_contacts = n_contacts - n_old_contacts
+        new_contacts = (n_contacts - n_old_contacts).astype(jp.float32)
 
         # TODO: Add human preference rewards
         reward = self._dist_reward_weight*r_dist + self._ctrl_cost_weight*ctrl_cost + self._wiping_reward_weight*new_contacts
@@ -252,7 +252,11 @@ class BedBathing(PipelineEnv):
         )
 
         return state.replace(
-            pipeline_state=pipeline_state, obs = obs, reward=reward, done=done, info=info
+            pipeline_state=pipeline_state,
+            obs=obs,
+            reward=reward,
+            done=done,
+            info=state.info | contact_info,
         )
         # return (robo_obs, human_obs)
 
