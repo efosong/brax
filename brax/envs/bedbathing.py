@@ -32,7 +32,8 @@ class BedBathing(PipelineEnv):
     def __init__(
         self,
         ctrl_cost_weight: float = 1e-6,
-        dist_reward_weight: float = 1.0,
+        dist_reward_weight: float = 0.1,
+        dist_scale: float = 0.1,
         wiping_reward_weight: float = 1.0,
         reset_noise_scale=5e-3,
         backend="mjx",
@@ -118,7 +119,7 @@ class BedBathing(PipelineEnv):
         self._ctrl_cost_weight = ctrl_cost_weight
         self._dist_reward_weight = dist_reward_weight
         self._wiping_reward_weight = wiping_reward_weight
-        self._dist_scale = 0.1
+        self._dist_scale = dist_scale
         self._reset_noise_scale = reset_noise_scale
         # self.actuator_classes = self._get_actuator_classes(self.path)
         # self.humanoid_actuators, self.panda_actuators = self._identify_actuators(self.actuator_classes)
@@ -198,7 +199,7 @@ class BedBathing(PipelineEnv):
         # distances_all = self._target_distances(global_targets, pipeline_state.site_xpos[self.panda_wiper_center_idx])
         # distances = self._mask_contacts(distances_all, self.contact_vector)
 
-        ctrl_cost = -self._ctrl_cost_weight * jp.sum(jp.square(action))
+        ctrl_cost = -jp.sum(jp.square(action))
         robo_obs = self._get_robo_obs(pipeline_state)
         human_obs = self._get_human_obs(pipeline_state)
         
@@ -234,7 +235,7 @@ class BedBathing(PipelineEnv):
         contact_info = {"contact_vector": new_contact_vector}
 
         closest_distance = jp.min(distances)
-        r_dist = self._dist_reward_weight*(1/jp.exp(self._dist_scale*closest_distance**2))
+        r_dist = jp.exp(-closest_distance**2/self._dist_scale)
 
         n_contacts = jp.count_nonzero(new_contact_vector==0)
         n_old_contacts = jp.count_nonzero(old_contact_vector==0)
