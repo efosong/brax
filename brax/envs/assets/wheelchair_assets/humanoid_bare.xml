@@ -45,10 +45,11 @@
 		<joint armature="0.0068" axis="2 1 1" name="right_shoulder1" pos="0 0 0" range="-85 60" stiffness="1" type="hinge"/>
 		<joint armature="0.0051" axis="0 -1 1" name="right_shoulder2" pos="0 0 0" range="-85 60" stiffness="1" type="hinge"/>
 		<geom fromto="0 0 0 .16 -.16 -.16" name="right_uarm1" size="0.04 0.16" type="capsule"/>
-		<geom name = "target" pos = "0.1 -.1 -0.06" size = "0.01" rgba = "0 0 1 1"/>
+		<geom class="disabled_collision" name="target-u" pos="0.081 -0.08 -0.08" size="0.01" rgba="1 0 0 1"/>
 		<body name="right_lower_arm" pos=".18 -.18 -.18">
 			<joint armature="0.0028" axis="0 -1 1" name="right_elbow" pos="0 0 0" range="-90 50" stiffness="0" type="hinge"/>
 			<geom fromto="0.01 0.01 0.01 .17 .17 .17" name="right_larm" size="0.031" type="capsule"/>
+			<geom class="disabled_collision" name="target-l" pos="0.091 0.09 0.09" size="0.01" rgba="1 0 0 1"/>
 			<geom name="right_hand" pos=".18 .18 .18" size="0.04" type="sphere"/>
 			<camera pos="0 0 0"/>
 		</body>

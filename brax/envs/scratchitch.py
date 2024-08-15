@@ -1,6 +1,7 @@
 from typing import Tuple
 
 from brax import base
+from brax import math as bmath
 from brax.envs.base import PipelineEnv, State
 from brax.io import mjcf
 from etils import epath
@@ -90,14 +91,15 @@ class ScratchItch(PipelineEnv):
 
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_uarm_geom_idx = mj_name2id(mjmodel, GEOM_IDX, "right_uarm1")
+        self.human_uarm_target_idx = mj_name2id(mjmodel, GEOM_IDX, "target-u")
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
         self.human_larm_geom_idx = mj_name2id(mjmodel, GEOM_IDX, "right_larm")
+        self.human_larm_target_idx = mj_name2id(mjmodel, GEOM_IDX, "target-l")
         
         # self.contact_force = jax.vmap(contact_force, in_axes=(None, 0, None, None))
 
-        self.TARGET_CONTACT_ID = 294
-        self.UARM_TOOL_CONTACT_ID = 292
-        self.LARM_TOOL_CONTACT_ID = 293
+        self.UARM_TOOL_CONTACT_ID = 273
+        self.LARM_TOOL_CONTACT_ID = 274
 
         self.panda_joint_id_start = 18
         self.panda_joint_id_end = 24
@@ -257,7 +259,7 @@ class ScratchItch(PipelineEnv):
         """Returns the environment observations."""
         tool_position = pipeline_state.site_xpos[self.panda_scratcher_tip_idx]
         tool_orientation = pipeline_state.xquat[self.panda_scratcher_body_idx]
-        force_on_tool = self._get_force_on_tool(pipeline_state, self.TARGET_CONTACT_ID, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
         robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
         target_position = self._get_scratch_xpos(pipeline_state, state_info)
         distance_to_target = jp.linalg.norm(target_position - tool_position)
@@ -288,7 +290,7 @@ class ScratchItch(PipelineEnv):
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
         
-        force_on_human = self._get_force_on_tool(pipeline_state, self.TARGET_CONTACT_ID, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
 
         return {
             "tool_position": tool_position,
@@ -311,9 +313,25 @@ class ScratchItch(PipelineEnv):
         )
         return scratch_xpos
 
-    def _get_force_on_tool(self, pipeline_state, target_tool_ids: int, uarm_tool_id: int, larm_id:int) -> jax.Array:
-        tool_target = contact_force(self.sys, pipeline_state, target_tool_ids, False)
+    def _get_force_on_tool(self, pipeline_state, uarm_tool_id: int, larm_id:int) -> jax.Array:
         tool_uarm = contact_force(self.sys, pipeline_state, uarm_tool_id, False)
         tool_larm = contact_force(self.sys, pipeline_state, larm_id, False)
+        return jp.sum(jp.vstack((tool_uarm, tool_larm)), axis=0)
 
-        return jp.sum(jp.vstack((tool_target, tool_uarm, tool_larm)), axis=0)
+    def get_sys_for_render(self, state):
+        if state.info["scratch"]["arm"]:
+            body_idx = self.human_tlarm_idx
+            geom_idx = self.human_larm_geom_idx
+            target_idx = self.human_larm_target_idx
+        else:
+            body_idx = self.human_tuarm_idx
+            geom_idx = self.human_uarm_geom_idx
+            target_idx = self.human_uarm_target_idx
+        new_pos = self.sys.geom_pos[geom_idx] + bmath.rotate(
+            state.info["scratch"]["pos"],
+            bmath.relative_quat(
+                self.sys.body_quat[body_idx],
+                self.sys.geom_quat[geom_idx]
+            )
+        )
+        return self.sys.replace(geom_pos=self.sys.geom_pos.at[target_idx].set(new_pos))
