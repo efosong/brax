@@ -1,9 +1,9 @@
 <mujoco model="humanoid">
-  <body childclass="c_h-other" name="torso" pos="0 0 1.4">
+  <body childclass="c_human_body" name="torso" pos="0 0 1.4">
     <!--<camera name="track" mode="trackcom" pos="0 -4 0" xyaxes="1 0 0 0 0 1"/>-->
     <!--<joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>-->
     <geom fromto="0 -.07 0 0 .07 0" name="torso1" size="0.07" type="capsule"/>
-    <geom class="c_h-contact" name="head" pos="0 0 .19" size=".09" type="sphere" user="258"/>
+    <geom name="head" class="c_human_head" pos="0 0 .19" size=".09" type="sphere" user="258"/>
     <geom fromto="-.01 -.06 -.12 -.01 .06 -.12" name="uwaist" size="0.06" type="capsule"/>
     <body name="lwaist" pos="-.01 0 -0.260" quat="1.000 0 -0.002 0">
       <geom fromto="0 -.06 0 0 .06 0" name="lwaist" size="0.06" type="capsule"/>
@@ -11,7 +11,7 @@
       <joint armature="0.02" axis="0 1 0" damping="5" name="abdomen_y" pos="0 0 0.065" range="-1.308996 0.523598" stiffness="10" type="hinge"/>
       <body name="pelvis" pos="0 0 -0.165" quat="1.000 0 -0.002 0">
         <joint armature="0.02" axis="1 0 0" damping="5" name="abdomen_x" pos="0 0 0.1" range="-0.610865 0.610865" stiffness="10" type="hinge"/>
-        <geom class="c_h-contact" fromto="-.02 -.07 0 -.02 .07 0" name="butt" size="0.09" type="capsule"/>
+        <geom fromto="-.02 -.07 0 -.02 .07 0" name="butt" size="0.09" type="capsule"/>
         <body name="right_thigh" pos="0 -0.1 -0.04">
           <joint armature="0.01" axis="1 0 0" damping="5" name="right_hip_x" pos="0 0 0" range="-0.436332 0.087266" stiffness="10" type="hinge"/>
           <joint armature="0.01" axis="0 0 1" damping="5" name="right_hip_z" pos="0 0 0" range="-1.047197 0.610865" stiffness="10" type="hinge"/>
@@ -20,7 +20,7 @@
           <body name="right_shin" pos="0 0.01 -0.403">
             <joint armature="0.0060" axis="0 -1 0" name="right_knee" pos="0 0 .02" range="-2.792524 -0.034907" type="hinge"/>
             <geom fromto="0 0 0 0 0 -.3" name="right_shin1" size="0.049" type="capsule"/>
-            <body childclass="c_h-contact" name="right_foot" pos="0 0 -0.45">
+            <body name="right_foot" pos="0 0 -0.45">
               <geom name="right_foot" pos="0 0 0.1" size="0.075" type="sphere" user="0"/>
             </body>
           </body>
@@ -33,14 +33,14 @@
           <body name="left_shin" pos="0 -0.01 -0.403">
             <joint armature="0.0060" axis="0 -1 0" name="left_knee" pos="0 0 .02" range="-2.792524 -0.034907" stiffness="1" type="hinge"/>
             <geom fromto="0 0 0 0 0 -.3" name="left_shin1" size="0.049" type="capsule"/>
-            <body childclass="c_h-contact" name="left_foot" pos="0 0 -0.45">
+            <body name="left_foot" pos="0 0 -0.45">
               <geom name="left_foot" type="sphere" size="0.075" pos="0 0 0.1" user="0" />
             </body>
           </body>
         </body>
       </body>
     </body>
-    <body childclass="c_h-right-arm" name="right_upper_arm" pos="0 -0.17 0.06">
+    <body name="right_upper_arm" pos="0 -0.17 0.06">
       <joint armature="0.0068" axis="2 1 1" name="right_shoulder1" pos="0 0 0" range="-1.483529 1.047197" stiffness="1" type="hinge"/>
       <joint armature="0.0051" axis="0 -1 1" name="right_shoulder2" pos="0 0 0" range="-1.483529 1.047197" stiffness="1" type="hinge"/>
       <geom fromto="0 0 0 .16 -.16 -.16" name="right_uarm" size="0.04 0.16" type="capsule"/>
@@ -52,7 +52,7 @@
         <camera pos="0 0 0"/>
       </body>
     </body>
-    <body childclass="c_h-contact" name="left_upper_arm" pos="0 0.17 0.06">
+    <body name="left_upper_arm" pos="0 0.17 0.06">
       <joint armature="0.0068" axis="2 -1 1" name="left_shoulder1" pos="0 0 0" range="-1.047197 1.483529" stiffness="1" type="hinge"/>
       <joint armature="0.0051" axis="0 1 1" name="left_shoulder2" pos="0 0 0" range="-1.047197 1.483529" stiffness="1" type="hinge"/>
       <geom fromto="0 0 0 .16 .16 -.16" name="left_uarm" size="0.04 0.16" type="capsule"/>

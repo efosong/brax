@@ -73,21 +73,29 @@
     <default class="bed">
       <geom contype="0" conaffinity="0"/>
       <material specular="0.5" shininess="0.25"/>
-      <default class="c_bed">
-        <geom contype="1" conaffinity="52" group="3" rgba="1 0 0 0.1"/>
+      <default class="c_bed_mattress">
+        <geom contype="2" conaffinity="12" group="3" rgba="1 0 0 0.1"/>
+      </default>
+      <default class="c_bed_pillow">
+        <geom contype="1" conaffinity="32" group="3" rgba="1 0 0 0.1"/>
+      </default>
+      <default class="no-c_bed">
+        <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
       </default>
     </default>
     <default class="humanoid">
       <geom contype="0" conaffinity="0"/>
-      <default class="c_h-right-arm">
-        <geom contype="32" conaffinity="5" />
+      <default class="c_human_head">
+        <geom contype="32" conaffinity="1" />
       </default>
-      <default class="c_h-contact">
-        <geom contype="16" conaffinity="1" />
+      <default class="c_human_right-arm">
+        <geom contype="16" conaffinity="6" />
       </default>
-      <default class="c_h-other">
-        <!--<geom contype="8" conaffinity="0"/>-->
-        <geom contype="16" conaffinity="1"/> <!-- TODO: reduce collisions -->
+      <default class="c_human_body">
+        <geom contype="8" conaffinity="2"/>
+      </default>
+      <default class="no-c_human">
+        <geom contype="0" conaffinity="0"/>
       </default>
       <joint armature="1" damping="1" limited="true"/>
       <general dyntype="none" biastype="affine" ctrlrange="-.4 .4" ctrllimited="true"/>
@@ -100,14 +108,14 @@
       <default class="finger">
         <joint axis="0 1 0" type="slide" range="0 0.04"/>
       </default>
-      <default class="c_r-tool">
-        <geom contype="4" conaffinity="33" rgba="0 0 1 1.0"/>
+      <default class="c_robot_hand">
+        <geom contype="4" conaffinity="28" rgba="0 0 1 0.1"/>
       </default>
-      <default class="c_r-hand">
-        <geom contype="4" conaffinity="33" group="3" rgba="0 0 1 0.1"/>
+      <default class="c_robot_tool">
+        <geom contype="4" conaffinity="28" group="3" rgba="0 0 1 1.0"/>
       </default>
-      <default class="c_r-other">
-        <geom contype="2" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
+      <default class="no-c_robot">
+        <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
       </default>
     </default>
     <default class="visual">
