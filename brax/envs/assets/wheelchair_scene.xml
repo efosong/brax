@@ -103,7 +103,7 @@
     <default class="panda">
       <geom contype="0" conaffinity="0"/>
       <joint armature="0.1" damping="1" axis="0 0 1" range="-2.8973 2.8973"/>
-      <general dyntype="none" biastype="affine" ctrlrange="-2.8973 2.8973" forcerange="-87 87"/>
+      <general dyntype="none" biastype="affine" ctrlrange="-1 1" ctrllimited="true" forcerange="-87 87"/>
       <default class="finger">
         <joint axis="0 1 0" type="slide" range="0 0.04"/>
       </default>
@@ -171,16 +171,13 @@
     <general class="humanoid" gear="25" joint="left_shoulder2" name="left_shoulder2" biasprm="0 -0.001 0"/>
     <general class="humanoid" gear="25" joint="left_elbow" name="left_elbow" biasprm="0 -0.001 0"/>
     <!-- Panda -->
-    <general class="panda" name="actuator1" joint="joint1" gainprm="4500" biasprm="0 -4500 -450"/>
-    <general class="panda" name="actuator2" joint="joint2" gainprm="4500" biasprm="0 -4500 -450"
-    ctrlrange="-1.7628 1.7628"/>
-    <general class="panda" name="actuator3" joint="joint3" gainprm="3500" biasprm="0 -3500 -350"/>
-    <general class="panda" name="actuator4" joint="joint4" gainprm="3500" biasprm="0 -3500 -350"
-    ctrlrange="-3.0718 -0.0698"/>
-    <general class="panda" name="actuator5" joint="joint5" gainprm="2000" biasprm="0 -2000 -200" forcerange="-12 12"/>
-    <general class="panda" name="actuator6" joint="joint6" gainprm="2000" biasprm="0 -2000 -200" forcerange="-12 12"
-    ctrlrange="-0.0175 3.7525"/>
-    <general class="panda" name="actuator7" joint="joint7" gainprm="2000" biasprm="0 -2000 -200" forcerange="-12 12"/>
+    <general class="panda" name="actuator1" joint="joint1" gainprm="4500" biasprm="0 -1433 -450" ctrlrange="-0.9222 0.9222"/>
+    <general class="panda" name="actuator2" joint="joint2" gainprm="4500" biasprm="0 -1433 -450" ctrlrange="-0.5611 0.5611"/>
+    <general class="panda" name="actuator3" joint="joint3" gainprm="3500" biasprm="0 -1115 -350" ctrlrange="-0.9222 0.9222"/>
+    <general class="panda" name="actuator4" joint="joint4" gainprm="3500" biasprm="0 -1115 -350" ctrlrange="-0.9778 -0.0222"/>
+    <general class="panda" name="actuator5" joint="joint5" gainprm="2000" biasprm="0 -637 -200" ctrlrange="-0.9222 0.9222" forcerange="-12 12"/>
+    <general class="panda" name="actuator6" joint="joint6" gainprm="2000" biasprm="0 -637 -200" ctrlrange="-0.0056 1.1945" forcerange="-12 12"/>
+    <general class="panda" name="actuator7" joint="joint7" gainprm="2000" biasprm="0 -637 -200" ctrlrange="-0.9222 0.9222" forcerange="-12 12"/>
   </actuator>
 
   <equality>
