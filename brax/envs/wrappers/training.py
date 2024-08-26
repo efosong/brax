@@ -15,7 +15,7 @@
 # pylint:disable=g-multiple-import, g-importing-member
 """Wrappers to support Brax training."""
 
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Any, Tuple
 
 from brax.base import System
 from brax.envs.base import Env, State, Wrapper
@@ -221,3 +221,70 @@ class DomainRandomizationVmapWrapper(Wrapper):
 
         res = jax.vmap(step, in_axes=[self._in_axes, 0, 0])(self._sys_v, state, action)
         return res
+
+
+class SysRandomizationWrapper(Wrapper):
+    """Wrapper for domain randomization."""
+
+    def __init__(
+        self,
+        env: Env,
+        randomization_fn: Callable[[System, jax.Array], dict[str, Any]],
+    ):
+        super().__init__(env)
+        self.randomization_fn = randomization_fn
+
+    def _env_fn(self, sys: System) -> Env:
+        env = self.env
+        env.unwrapped.sys = sys
+        return env
+
+    def reset(self, rng) -> State:
+        key_reset, key_dr = jax.random.split(rng)
+        sys = self.env.unwrapped.sys
+        variations = self.randomization_fn(sys, key_dr)
+        new_sys = sys.tree_replace(variations)
+        new_env = self._env_fn(new_sys)
+        state = new_env.reset(key_reset)
+        state = state.replace(info=state.info|{"sys_var": variations})
+        return state
+
+    def step(self, state: State, action: jax.Array) -> State:
+        variations = state.info["sys_var"]
+        sys = self.env.unwrapped.sys
+        new_sys = sys.tree_replace(variations)
+        new_env = self._env_fn(new_sys)
+        state = new_env.step(state, action)
+        state = state.replace(info=state.info|{"sys_var": variations})
+        return state
+
+
+class TremorWrapper(Wrapper):
+    """Wrapper for randomising control inputs"""
+
+    def __init__(
+        self,
+        env: Env,
+        randomization_fn: Callable[[System, jax.Array], dict[str, Any]],
+    ):
+        super().__init__(env)
+        self.randomization_fn = randomization_fn
+
+    def reset(self, rng) -> State:
+        key_reset, key_dr = jax.random.split(rng)
+        tremor_cfg = self.randomization_fn(key_dr)
+        state = self.env.reset(key_reset)
+        state = state.replace(info=state.info|{"tremor": tremor_cfg})
+        return state
+
+    def step(self, state: State, action: jax.Array) -> State:
+        tremor_cfg = state.info["tremor"]
+        tremor_rng, _tremor_rng = jax.random.split(tremor_cfg["rng"])
+        tremor_action = tremor_cfg["strength"]*(
+            action
+            + tremor_cfg["tremor_magnitude"]*jax.random.uniform(_tremor_rng)
+        )
+        tremor_action = jp.select(tremor_cfg["tremor_mask"], tremor_action, action)
+        state = self.env.step(state, tremor_action)
+        state = state.replace(info=state.info|{"tremor": tremor_cfg|{"rng": tremor_rng}})
+        return state

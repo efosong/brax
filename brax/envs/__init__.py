@@ -16,7 +16,8 @@
 """Environments for training and evaluating policies."""
 
 import functools
-from typing import Optional, Type
+from typing import Optional, Any, Type, Callable
+from brax.base import System
 
 from brax.envs import ant
 from brax.envs import fast
@@ -88,6 +89,8 @@ def create(
     action_repeat: int = 1,
     auto_reset: bool = True,
     batch_size: Optional[int] = None,
+    sys_randomize: Optional[Callable[[System, jax.Array], dict[str, Any]]] = None,
+    tremor: Optional[Callable[[jax.Array], dict[str, Any]]] = None,
     **kwargs,
 ) -> Env:
     """Creates an environment from the registry.
@@ -111,5 +114,9 @@ def create(
         env = training.VmapWrapper(env, batch_size)
     if auto_reset:
         env = training.AutoResetWrapper(env)
+    if sys_randomize:
+        env = training.SysRandomizationWrapper(env, sys_randomize)
+    if tremor:
+        env = training.TremorWrapper(env, tremor)
 
     return env
