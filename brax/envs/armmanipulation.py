@@ -104,9 +104,10 @@ class ArmManipulation(PipelineEnv):
         # self.TARGET_CONTACT_ID = 294
         
         # TODO: Update these indexes once XML is updated or write some sort of helper function to get these
-        self.UARM_TOOL_CONTACT_ID = 30
-    
-        self.LARM_TOOL_CONTACT_ID = 34
+        self.UARM_HPLATFORM_CONTACT_ID = 56
+        self.LARM_HPLATFORM_CONTACT_ID = 60
+        self.UARM_HEND_CONTACT_ID = 57
+        self.LARM_HEND_CONTACT_ID = 62
 
         # TODO: Double check these or write a helper function to find these
         self.panda_joint_id_start = 18
@@ -227,9 +228,9 @@ class ArmManipulation(PipelineEnv):
             human_obs["human_joint_angles"],           
         ))
 
-        elbow_stomach_dist = jp.exp(-jp.linalg.norm(human_obs["elbow_pos"] - human_obs["stomach_pos"])/self._dist_scale)
+        elbow_stomach_dist = jp.exp((-jp.linalg.norm(human_obs["elbow_pos"] - human_obs["stomach_pos"]))**2/self._dist_scale)
 
-        tool_wrist_dist = jp.exp(-jp.linalg.norm(robo_obs["tool_position"] - robo_obs["wrist_pos"])/self._dist_scale)
+        tool_wrist_dist = jp.exp((-jp.linalg.norm(robo_obs["tool_position"] - robo_obs["wrist_pos"]))**2/self._dist_scale)
 
 
         # TODO: Add human preference rewards
@@ -258,7 +259,7 @@ class ArmManipulation(PipelineEnv):
         tool_orientation = pipeline_state.xquat[self.panda_hook_body_idx]
         
         # TODO: adjust this so the ._get_force_on_tool takes 3 args
-        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
         robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
 
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
@@ -337,7 +338,7 @@ class ArmManipulation(PipelineEnv):
         stomach_pos = pipeline_state.xpos[self.human_uwaist_idx]
         waist_pos = pipeline_state.xpos[self.human_lwaist_idx]
 
-        force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
         
         return {
             # "position": position,
@@ -381,9 +382,12 @@ class ArmManipulation(PipelineEnv):
 
         return center_distance
     
-    def _get_force_on_tool(self, pipeline_state, uarm_tool_id: int, larm_id:int) -> jax.Array:
+    def _get_force_on_tool(self, pipeline_state, uarm_tool1_id: int, larm_tool1_id:int, uarm_tool2_id: int, larm_tool2_id: int) -> jax.Array:
         """Return the force on the tool"""
-        tool_uarm = contact_force(self.sys, pipeline_state, uarm_tool_id, False)
-        tool_larm = contact_force(self.sys, pipeline_state, larm_id, False)
+        tool1_uarm = contact_force(self.sys, pipeline_state, uarm_tool1_id, False)
+        tool1_larm = contact_force(self.sys, pipeline_state, larm_tool1_id, False)
 
-        return jp.sum(jp.vstack((tool_uarm, tool_larm)), axis=0)
+        tool2_uarm = contact_force(self.sys, pipeline_state, uarm_tool2_id, False)
+        tool2_larm = contact_force(self.sys, pipeline_state, larm_tool2_id, False)
+
+        return jp.sum(jp.vstack((tool1_uarm, tool1_larm, tool2_uarm, tool2_larm)), axis=0)
