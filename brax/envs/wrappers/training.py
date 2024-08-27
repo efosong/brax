@@ -244,9 +244,10 @@ class DisabilityWrapper(Wrapper):
         )
 
     def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
-        modified_action = self._modify_action(rng, action)
+        rng_act, rng_env = jax.random.split(rng)
+        modified_action = self._modify_action(rng_act, action)
         # N.B. we might want to handle control cost before passing to step
-        return self.env.step(state, modified_action)
+        return self.env.step(rng_env, state, modified_action)
 
     def _modify_action(self, rng: jax.Array, action: jax.Array) -> jax.Array:
         tremor_action = self.joint_strength * (

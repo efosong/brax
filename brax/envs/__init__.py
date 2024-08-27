@@ -114,7 +114,6 @@ def create(
         env = training.VmapWrapper(env, batch_size)
     if auto_reset:
         env = training.AutoResetWrapper(env)
-    # Since DisabilityWrapper changes the step API, it must be applied last.
     if disability:
         env = training.DisabilityWrapper(env, disability)
 
