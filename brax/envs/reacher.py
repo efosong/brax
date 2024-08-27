@@ -193,7 +193,7 @@ class Reacher(PipelineEnv):
         }
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         pipeline_state = self.pipeline_step(state.pipeline_state, action)
         obs = self._get_obs(pipeline_state)
 

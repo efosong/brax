@@ -42,7 +42,7 @@ class Fast(PipelineEnv):
         reward, done = jp.array(0.0), jp.array(0.0)
         return State(pipeline_state, obs, reward, done)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         assert state.pipeline_state is not None
         self._step_count += 1
         vel = state.pipeline_state.xd.vel + (action > 0) * self._dt

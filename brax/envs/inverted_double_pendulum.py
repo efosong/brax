@@ -143,7 +143,7 @@ class InvertedDoublePendulum(PipelineEnv):
 
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Run one timestep of the environment's dynamics."""
         pipeline_state = self.pipeline_step(state.pipeline_state, action)
 

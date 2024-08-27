@@ -151,7 +151,7 @@ class Swimmer(PipelineEnv):
         }
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         pipeline_state0 = state.pipeline_state
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
