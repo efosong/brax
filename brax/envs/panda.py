@@ -128,7 +128,7 @@ class Panda(PipelineEnv):
         }
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
         pipeline_state0 = state.pipeline_state
         assert pipeline_state0 is not None

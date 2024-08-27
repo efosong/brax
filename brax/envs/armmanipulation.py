@@ -190,7 +190,7 @@ class ArmManipulation(PipelineEnv):
 
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
         pipeline_state0 = state.pipeline_state
         assert pipeline_state0 is not None
@@ -386,7 +386,6 @@ class ArmManipulation(PipelineEnv):
         """Return the force on the tool"""
         tool1_uarm = contact_force(self.sys, pipeline_state, uarm_tool1_id, False)
         tool1_larm = contact_force(self.sys, pipeline_state, larm_tool1_id, False)
-
         tool2_uarm = contact_force(self.sys, pipeline_state, uarm_tool2_id, False)
         tool2_larm = contact_force(self.sys, pipeline_state, larm_tool2_id, False)
 

@@ -49,7 +49,7 @@ class Env(abc.ABC):
         """Resets the environment to an initial state."""
 
     @abc.abstractmethod
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Run one timestep of the environment's dynamics."""
 
     @property
@@ -168,8 +168,8 @@ class Wrapper(Env):
     def reset(self, rng: jax.Array) -> State:
         return self.env.reset(rng)
 
-    def step(self, state: State, action: jax.Array) -> State:
-        return self.env.step(state, action)
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
+        return self.env.step(rng, state, action)
 
     @property
     def observation_size(self) -> int:

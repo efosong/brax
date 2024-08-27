@@ -15,7 +15,7 @@
 # pylint:disable=g-multiple-import, g-importing-member
 """Wrappers to support Brax training."""
 
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple, Any
 
 from brax.base import System
 from brax.envs.base import Env, State, Wrapper
@@ -65,8 +65,8 @@ class VmapWrapper(Wrapper):
             rng = jax.random.split(rng, self.batch_size)
         return jax.vmap(self.env.reset)(rng)
 
-    def step(self, state: State, action: jax.Array) -> State:
-        return jax.vmap(self.env.step)(state, action)
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
+        return jax.vmap(self.env.step)(rng, state, action)
 
 
 class EpisodeWrapper(Wrapper):
@@ -83,9 +83,9 @@ class EpisodeWrapper(Wrapper):
         state.info["truncation"] = jp.zeros(rng.shape[:-1])
         return state
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         def f(state, _):
-            nstate = self.env.step(state, action)
+            nstate = self.env.step(rng, state, action)
             return nstate, nstate.reward
 
         state, rewards = jax.lax.scan(f, state, (), self.action_repeat)
@@ -111,13 +111,13 @@ class AutoResetWrapper(Wrapper):
         state.info["first_obs"] = state.obs
         return state
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         if "steps" in state.info:
             steps = state.info["steps"]
             steps = jp.where(state.done, jp.zeros_like(steps), steps)
             state.info.update(steps=steps)
         state = state.replace(done=jp.zeros_like(state.done))
-        state = self.env.step(state, action)
+        state = self.env.step(rng, state, action)
 
         def where_done(x, y):
             done = state.done
@@ -162,12 +162,12 @@ class EvalWrapper(Wrapper):
         reset_state.info["eval_metrics"] = eval_metrics
         return reset_state
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         state_metrics = state.info["eval_metrics"]
         if not isinstance(state_metrics, EvalMetrics):
             raise ValueError(f"Incorrect type for state_metrics: {type(state_metrics)}")
         del state.info["eval_metrics"]
-        nstate = self.env.step(state, action)
+        nstate = self.env.step(rng, state, action)
         nstate.metrics["reward"] = nstate.reward
         episode_steps = jp.where(
             state_metrics.active_episodes,
@@ -214,10 +214,45 @@ class DomainRandomizationVmapWrapper(Wrapper):
         state = jax.vmap(reset, in_axes=[self._in_axes, 0])(self._sys_v, rng)
         return state
 
-    def step(self, state: State, action: jax.Array) -> State:
-        def step(sys, s, a):
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
+        def step(sys, r, s, a):
             env = self._env_fn(sys=sys)
-            return env.step(s, a)
+            return env.step(r, s, a)
 
-        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0])(self._sys_v, state, action)
+        res = jax.vmap(step, in_axes=[self._in_axes, 0, 0, 0])(self._sys_v, rng, state, action)
         return res
+
+
+class DisabilityWrapper(Wrapper):
+    """Wrapper for applying persistent disabilities."""
+
+    def __init__(
+        self,
+        env: Env,
+        cfg: dict[str, Any],
+    ):
+        super().__init__(env)
+        self.disability_jnt_idx = cfg["joint_idx"]
+        self.disability_mask = jp.zeros(self.env.action_size, bool).at[self.disability_jnt_idx].set(True)
+        self.joint_restriction_factor = cfg.get("joint_restriction_factor", 1.0)
+        self.joint_strength = cfg.get("joint_strength", 1.0)
+        self.tremor_magnitude = cfg.get("tremor_magnitude", 0.0)
+        orig_joint_range = self.env.unwrapped.sys.jnt_range[self.disability_jnt_idx]
+        new_joint_range = self.joint_restriction_factor * orig_joint_range
+        self.env.unwrapped.sys = self.env.unwrapped.sys.replace(
+            jnt_range=self.env.unwrapped.sys.jnt_range.at[self.disability_jnt_idx].set(new_joint_range)
+        )
+
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
+        rng_act, rng_env = jax.random.split(rng)
+        modified_action = self._modify_action(rng_act, action)
+        # N.B. we might want to handle control cost before passing to step
+        return self.env.step(rng_env, state, modified_action)
+
+    def _modify_action(self, rng: jax.Array, action: jax.Array) -> jax.Array:
+        tremor_action = self.joint_strength * (
+            action
+            + self.tremor_magnitude*jax.random.uniform(rng)
+        )
+        tremor_action = jp.where(self.disability_mask, tremor_action, action)
+        return tremor_action

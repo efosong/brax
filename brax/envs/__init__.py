@@ -16,7 +16,7 @@
 """Environments for training and evaluating policies."""
 
 import functools
-from typing import Optional, Type
+from typing import Optional, Type, Any
 
 from brax.envs import ant
 from brax.envs import fast
@@ -90,6 +90,7 @@ def create(
     action_repeat: int = 1,
     auto_reset: bool = True,
     batch_size: Optional[int] = None,
+    disability: Optional[dict[str, Any]] = None,
     **kwargs,
 ) -> Env:
     """Creates an environment from the registry.
@@ -113,5 +114,7 @@ def create(
         env = training.VmapWrapper(env, batch_size)
     if auto_reset:
         env = training.AutoResetWrapper(env)
+    if disability:
+        env = training.DisabilityWrapper(env, disability)
 
     return env

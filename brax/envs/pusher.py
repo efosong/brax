@@ -191,7 +191,7 @@ class Pusher(PipelineEnv):
         metrics = {"reward_dist": zero, "reward_ctrl": zero, "reward_near": zero}
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
 
         # Scale action from [-1,1] to actuator limits
         action_min = self.sys.actuator.ctrl_range[:, 0]

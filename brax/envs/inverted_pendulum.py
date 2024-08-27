@@ -122,7 +122,7 @@ class InvertedPendulum(PipelineEnv):
 
         return State(pipeline_state, obs, reward, done, metrics)
 
-    def step(self, state: State, action: jax.Array) -> State:
+    def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Run one timestep of the environment's dynamics."""
 
         # Scale action from [-1,1] to actuator limits
