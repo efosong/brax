@@ -38,7 +38,7 @@ class BedBathing(PipelineEnv):
         reset_noise_scale=5e-3,
         backend="mjx",
         n_targets: int = 52,
-        target_threshold: float = 0.05,
+        target_threshold: float = 0.1,
         **kwargs
     ):
         """Creates a BedBathing Environment.
@@ -100,9 +100,9 @@ class BedBathing(PipelineEnv):
         # self.TARGET_CONTACT_ID = 294
         
         # TODO: Update these indexes once XML is updated or write some sort of helper function to get these
-        self.UARM_TOOL_CONTACT_ID = 30
+        self.UARM_TOOL_CONTACT_ID = 58
     
-        self.LARM_TOOL_CONTACT_ID = 34
+        self.LARM_TOOL_CONTACT_ID = 62
 
         # TODO: Double check these or write a helper function to find these
         self.panda_joint_id_start = 18
@@ -181,7 +181,10 @@ class BedBathing(PipelineEnv):
         metrics = {
             "reward_dist": zero,
             "reward_ctrl": zero,
-            "reward_wiping": zero
+            "reward_wiping": zero,
+            "contact_vector": jp.zeros(self.n_targets),
+            "distances": jp.zeros(self.n_targets),
+            "contacts_info": jp.zeros(self.n_targets)
         }
         info = {"contact_vector": contact_vector}
         return State(pipeline_state, obs, reward, done, metrics, info)
@@ -249,7 +252,10 @@ class BedBathing(PipelineEnv):
         state.metrics.update(
             reward_dist = r_dist,
             reward_ctrl = ctrl_cost,
-            reward_wiping = new_contacts
+            reward_wiping = new_contacts,
+            contact_vector = new_contact_vector,
+            distances = distances,
+            contacts_info = state.info["contact_vector"]
         )
 
         return state.replace(
