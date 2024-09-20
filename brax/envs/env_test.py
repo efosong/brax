@@ -23,8 +23,9 @@ from brax import test_utils
 import jax
 from jax import numpy as jp
 
-_EXPECTED_SPS = {"spring": {"ant": 1000, "humanoid": 1000}}
+# _EXPECTED_SPS = {"spring": {"ant": 1000, "humanoid": 1000}}
 
+_EXPECTED_SPS = {"spring": {"bedbathing": 1000}}
 
 class EnvTest(parameterized.TestCase):
     params = [

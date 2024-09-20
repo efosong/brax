@@ -36,6 +36,7 @@ from brax.envs import wheelchair
 from brax.envs import scratchitch
 from brax.envs import bedbathing
 from brax.envs import armmanipulation
+from brax.envs import shadow
 from brax.envs.base import Env, PipelineEnv, State, Wrapper
 from brax.envs.wrappers import training
 
@@ -58,6 +59,7 @@ _envs = {
     "scratchitch": scratchitch.ScratchItch,
     "bedbathing": bedbathing.BedBathing,
     "armmanipulation": armmanipulation.ArmManipulation,
+    "shadow": shadow.Shadow
 }
 
 
