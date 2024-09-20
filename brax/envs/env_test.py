@@ -14,10 +14,16 @@
 
 """Tests for brax envs."""
 
+import os
+os.environ["XLA_FLAGS"] = (
+    "--xla_gpu_enable_triton_softmax_fusion=true "
+    "--xla_gpu_triton_gemm_any=True "
+)
 import functools
 
 from absl.testing import absltest
 from absl.testing import parameterized
+import brax
 from brax import envs
 from brax import test_utils
 import jax
@@ -27,16 +33,21 @@ from jax import numpy as jp
 # _EXPECTED_SPS = {"mjx": {"bedbathing": 1000}}
 _EXPECTED_SPS = {"mjx": {"scratchitch": 10}}
 
+_EXPECTED_SPS = {"mjx": {"scratchitch": 1000}}
+BATCH_SIZES = [64,128,256]
+
 # _EXPECTED_SPS = {"mjx": {"shadow": 1000}}
 
 class EnvTest(parameterized.TestCase):
     params = [
-        (b, e, _EXPECTED_SPS[b][e]) for b in _EXPECTED_SPS for e in _EXPECTED_SPS[b]
+        (backend, batch_size, env, _EXPECTED_SPS[backend][env])
+        for backend in _EXPECTED_SPS
+        for env in _EXPECTED_SPS[backend]
+        for batch_size in BATCH_SIZES
     ]
 
     @parameterized.parameters(params)
-    def testSpeed(self, backend, env_name, expected_sps):
-        batch_size = 4
+    def testSpeed(self, backend, batch_size, env_name, expected_sps):
         episode_length = 100 if expected_sps < 10_000 else 1000
 
         env = envs.create(
