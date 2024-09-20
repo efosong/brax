@@ -94,13 +94,26 @@ class Shadow(PipelineEnv):
           backend: str, the physics backend to use
           **kwargs: Arguments that are passed to the base class.
         """
-        path = epath.resource_path("brax") / "envs/assets/shadow.xml"
-        sys = mjcf.load(path)
+        self.path = epath.resource_path("brax") / "envs/assets/shadow.xml"
+        # sys = mjcf.load(path)
+
+        mjmodel = mujoco.MjModel.from_xml_path(str(self.path))
+        self.sys = mjcf.load_model(mjmodel)
+
+        if backend == "mjx":
+            self.sys = self.sys.tree_replace(
+                {
+                    "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON,
+                    "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
+                    "opt.iterations": 1,
+                    "opt.ls_iterations": 4,
+                }
+            )
 
         n_frames = 4
         kwargs["n_frames"] = kwargs.get("n_frames", n_frames)
 
-        super().__init__(sys=sys, backend=backend, **kwargs)
+        super().__init__(sys=self.sys, backend=backend, **kwargs)
 
         self._vertical_reward_weight = vertical_reward_weight
         self._ctrl_cost_weight = ctrl_cost_weight

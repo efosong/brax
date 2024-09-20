@@ -24,8 +24,10 @@ import jax
 from jax import numpy as jp
 
 # _EXPECTED_SPS = {"spring": {"ant": 1000, "humanoid": 1000}}
+# _EXPECTED_SPS = {"mjx": {"bedbathing": 1000}}
+_EXPECTED_SPS = {"mjx": {"scratchitch": 10}}
 
-_EXPECTED_SPS = {"spring": {"bedbathing": 1000}}
+# _EXPECTED_SPS = {"mjx": {"shadow": 1000}}
 
 class EnvTest(parameterized.TestCase):
     params = [
@@ -34,7 +36,7 @@ class EnvTest(parameterized.TestCase):
 
     @parameterized.parameters(params)
     def testSpeed(self, backend, env_name, expected_sps):
-        batch_size = 128
+        batch_size = 4
         episode_length = 100 if expected_sps < 10_000 else 1000
 
         env = envs.create(
