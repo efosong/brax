@@ -114,7 +114,8 @@ def benchmark(
         @jax.vmap
         def run(state):
             def step(state, _):
-                state = step_fn(state)
+                # dummy key, since it shouldn't affect performance
+                state = step_fn(jax.random.key(0), state)
                 return state, ()
 
             return jax.lax.scan(step, state, (), length=length)
