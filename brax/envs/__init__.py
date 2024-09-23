@@ -32,7 +32,6 @@ from brax.envs import swimmer
 from brax.envs import walker2d
 from brax.envs import lite_up
 from brax.envs import panda
-from brax.envs import wheelchair
 from brax.envs import scratchitch
 from brax.envs import bedbathing
 from brax.envs import armmanipulation
@@ -54,7 +53,6 @@ _envs = {
     "walker2d": walker2d.Walker2d,
     "liteup": lite_up.LiteUp,
     "panda": panda.Panda,
-    "wheelchair": wheelchair.Wheelchair,
     "scratchitch": scratchitch.ScratchItch,
     "bedbathing": bedbathing.BedBathing,
     "armmanipulation": armmanipulation.ArmManipulation,
