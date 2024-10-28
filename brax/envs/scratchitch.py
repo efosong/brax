@@ -66,8 +66,14 @@ class ScratchItch(PipelineEnv):
                     "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
                     "opt.iterations": 1,
                     "opt.ls_iterations": 4,
+                    "opt.timestep": 0.01
                 }
             )
+
+        # physics timestep - 100Hz
+        # print(self.sys.mj_model.opt)
+        # print(self.sys.opt.timestep)
+        # exit()
 
         self.panda_actuators_ids = []
         self.humanoid_actuators_ids = []
@@ -187,7 +193,12 @@ class ScratchItch(PipelineEnv):
         metrics = {
             "reward_dist": zero,
             "reward_ctrl": zero,
-            "reward_scratching": zero
+            "reward_scratching": zero,
+            "weighted_reward_dist": zero,
+            "weighted_reward_ctrl": zero,
+            "weighted_reward_scratching": zero, 
+            "in_contact": jp.array(False),
+            "scratcher_force": zero
         }
         return State(pipeline_state, obs, reward, done, metrics, info)
 
@@ -231,19 +242,33 @@ class ScratchItch(PipelineEnv):
         ) / self.dt
         scratcher_speed = jp.linalg.norm(scratcher_vel)
         scratcher_force = jp.linalg.norm(human_obs["force_on_human"])
+
+        # in contact
+        in_contact = (r_dist < self._dist_scale)
+        # force_threshold = (scratcher_force > 3.0)
+        r_scratching = in_contact * scratcher_force #force_threshold
+
+
         # Chosen Boltzmann-like reward functions for scratcher speed and force, but we could swap with alternatives.
-        r_scratching = (
-                (r_dist < self._dist_scale)
-                * scratcher_speed/self._target_scratcher_speed * jp.exp(-scratcher_speed/self._target_scratcher_speed)
-                * scratcher_force/self._target_scratcher_force * jp.exp(-scratcher_force/self._target_scratcher_force)
-        )
+        # r_scratching = (
+        #         (r_dist < self._dist_scale)
+        #         * scratcher_speed/self._target_scratcher_speed * jp.exp(-scratcher_speed/self._target_scratcher_speed)
+        #         * scratcher_force/self._target_scratcher_force * jp.exp(-scratcher_force/self._target_scratcher_force)
+        # )
         reward = self._dist_reward_weight*r_dist + self._ctrl_cost_weight*ctrl_cost + self._scratching_reward_weight*r_scratching
 
         done = 0.0
+        # print(in_contact.astype(jp.float32))
+
         state.metrics.update(
             reward_dist = r_dist,
             reward_ctrl = ctrl_cost,
-            reward_scratching = r_scratching
+            reward_scratching = r_scratching,
+            weighted_reward_dist = self._dist_reward_weight*r_dist,
+            weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost,
+            weighted_reward_scratching = self._scratching_reward_weight*r_scratching,
+            in_contact = in_contact,
+            scratcher_force = scratcher_force
         )
 
         return state.replace(
