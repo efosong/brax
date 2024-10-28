@@ -67,7 +67,7 @@ class BedBathing(PipelineEnv):
         BODY_IDX = mujoco.mjtObj.mjOBJ_BODY
         ACTUATOR_IDX = mujoco.mjtObj.mjOBJ_ACTUATOR
         SITE_IDX = mujoco.mjtObj.mjOBJ_SITE
-        print(GEOM_IDX)
+    
         
         self.panda_actuators_ids = []
         self.humanoid_actuators_ids = []
@@ -182,6 +182,9 @@ class BedBathing(PipelineEnv):
             "reward_dist": zero,
             "reward_ctrl": zero,
             "reward_wiping": zero,
+            # "weighted_reward_dist": zero,
+            # "weighted_reward_ctrl": zero,
+            # "weighted_reward_wiping": zero,
             "contact_vector": jp.zeros(self.n_targets),
             "distances": jp.zeros(self.n_targets),
             "contacts_info": jp.zeros(self.n_targets)
@@ -249,13 +252,17 @@ class BedBathing(PipelineEnv):
         
         done = jp.all(new_contact_vector == 0.0).astype(jp.float32)
         
+        # also in resset
         state.metrics.update(
             reward_dist = r_dist,
             reward_ctrl = ctrl_cost,
             reward_wiping = new_contacts,
+            # weighted_reward_dist = self._dist_reward_weight*r_dist,
+            # weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost,
+            # weighted_reward_wiping = self._wiping_reward_weight*new_contacts,
             contact_vector = new_contact_vector,
             distances = distances,
-            contacts_info = state.info["contact_vector"]
+            contacts_info = state.info["contact_vector"],
         )
 
         return state.replace(
