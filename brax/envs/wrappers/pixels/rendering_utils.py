@@ -59,12 +59,30 @@ class PixelState(base.Base):
     info: Dict[str, jnp.ndarray] = flax.struct.field(default_factory=dict)
 
 
+@flax.struct.dataclass
+class SysAttributes:
+    geom_rbound: jnp.ndarray
+    geom_size: jnp.ndarray
+    geom_dataid: jnp.ndarray
+    nmesh: jnp.ndarray
+    mesh_vertadr: jnp.ndarray
+    mesh_vert: jnp.ndarray
+    mesh_faceadr: jnp.ndarray
+    mesh_face: jnp.ndarray
+    geom_matid: jnp.ndarray
+    mat_rgba: jnp.ndarray
+    geom_pos: jnp.ndarray
+    geom_quat: jnp.ndarray
+    geom_rgba: jnp.ndarray
+    geom_bodyid: jnp.ndarray
+    geom_type: jnp.ndarray
+
+
 @partial(jax.jit, static_argnames="hw")
 def render_pixels(sys: brax.System, pipeline_states: brax.State, hw: int):
     # (1) grab the cameras and the view targets. The camera object contains its own view target
     # the extra bit we grab with _get_targets() is only used to render shadows. Maybe we can remove?
     # print(f'Within render pixels')
-
     # The "current_frame" arg is meant to work for the "video distractor" case
     batched_camera = _get_cameras(sys, pipeline_states, hw, hw)
     # print(f'after batched_camera')
@@ -75,6 +93,7 @@ def render_pixels(sys: brax.System, pipeline_states: brax.State, hw: int):
     print("got the batched_target...")
     # print(f'after batched_target')
     objs = _build_objects(sys, pipeline_states)
+    # objs = _vmap_build_objects(sys, pipeline_states)
     print("finally built those god damn objects...")
     # print(f'after _build_objects')
     images = _render(objs, pipeline_states, batched_camera, batched_target, hw)
@@ -157,7 +176,7 @@ def _eye(sys: brax.System, state: brax.State) -> jnp.ndarray:
     """
     """"""
     print("inside _eye()...")
-    # there are sys.mj_model.nbody - 1 (ignores the plane?)
+    # there are sys.nbody - 1 (ignores the plane?)
     print(f"state: {state.x.pos.shape}")
     print(f"geom: {state.geom_xpos.shape}")
     # [x, y, z]
@@ -253,11 +272,11 @@ def _vmap_build(
     elif geom_id == 2:
         # sphere geom_rbound = geom_size[0]
         print(f"======== SPHERE =========")
-        print(f"geom_rbound: {sys.mj_model.geom_rbound[geom_num]}")
-        print(f"geom_size: {sys.mj_model.geom_size[geom_num]}")
+        print(f"geom_rbound: {sys.geom_rbound[geom_num]}")
+        print(f"geom_size: {sys.geom_size[geom_num]}")
         print("==========================")
-        # is sys.mj_model.geom_rbound == sys.mj_model.geom_size[0]?
-        radius = sys.mj_model.geom_rbound[geom_num]
+        # is sys.geom_rbound == sys.geom_size[0]?
+        radius = sys.geom_rbound[geom_num]
         model = create_capsule(
             radius=radius,
             half_height=jnp.array(0.0),
@@ -271,26 +290,26 @@ def _vmap_build(
         # capsule geom_size[0] and geom_size[1] is not always same
         # capsule geom_size[2] is always 0
         print(f"======== CAPSULE =========")
-        print(f"geom_rbound: {sys.mj_model.geom_rbound[geom_num]}")
-        print(f"geom_size: {sys.mj_model.geom_size[geom_num]}")
+        print(f"geom_rbound: {sys.geom_rbound[geom_num]}")
+        print(f"geom_size: {sys.geom_size[geom_num]}")
         print("==========================")
 
         # geom_rbound is the radius of the "bounding sphere". This means the half_height
         # should just be the radius, right? If so, then what is radius?
-        bs_radius = sys.mj_model.geom_rbound[geom_num]
-        # length = sys.mj_model.geom_l
+        bs_radius = sys.geom_rbound[geom_num]
+        # length = sys.geom_l
 
         # When using "fromto", only need to provide a single number for size: the
         # radius of the object. in panda.xml, 0.04 or 0.04
-        # sys.mj_model.geom_size[geom_num] = [0.07 0.07 0.  ]
+        # sys.geom_size[geom_num] = [0.07 0.07 0.  ]
 
         # The "half_height" determines the length of the cylinder between the two
         # half-spheres. I.g., half_height=0 is just a sphere with a given radius
         # geom_size[0] is radius
         # geom_size[1] * 2 is height in THREE.CylinderGeometry
         model = create_capsule(
-            radius=sys.mj_model.geom_size[geom_num][0],
-            half_height=sys.mj_model.geom_size[geom_num][1],
+            radius=sys.geom_size[geom_num][0],
+            half_height=sys.geom_size[geom_num][1],
             up_axis=UpAxis.Z,
             diffuse_map=tex,
             specular_map=specular_map,
@@ -316,30 +335,26 @@ def _vmap_build(
 
         # we can use "geom_dataid: id of geom's mesh/hfield" to determine the mesh idx
         # as well as if the mesh is the last mesh. geom_dataid: (n_geoms,)
-        mesh_idx = sys.mj_model.geom_dataid[geom_num]
-        last_mesh = (mesh_idx + 1) >= sys.mj_model.nmesh
-        vert_idx_start = sys.mj_model.mesh_vertadr[mesh_idx]
+        mesh_idx = sys.geom_dataid[geom_num]
+        last_mesh = (mesh_idx + 1) >= sys.nmesh
+        vert_idx_start = sys.mesh_vertadr[mesh_idx]
         vert_idx_end = (
-            sys.mj_model.mesh_vertadr[mesh_idx + 1]
-            if not last_mesh
-            else sys.mj_model.mesh_vert.shape[0]
+            sys.mesh_vertadr[mesh_idx + 1] if not last_mesh else sys.mesh_vert.shape[0]
         )
         # mesh_vert (399342, 3)
         vertices = sys.mesh_vert[vert_idx_start:vert_idx_end]
 
         # Get faces
-        face_idx_start = sys.mj_model.mesh_faceadr[mesh_idx]
+        face_idx_start = sys.mesh_faceadr[mesh_idx]
         face_idx_end = (
-            sys.mj_model.mesh_faceadr[mesh_idx + 1]
-            if not last_mesh
-            else sys.mj_model.mesh_face.shape[0]
+            sys.mesh_faceadr[mesh_idx + 1] if not last_mesh else sys.mesh_face.shape[0]
         )
-        faces = sys.mj_model.mesh_face[face_idx_start:face_idx_end]
+        faces = sys.mesh_face[face_idx_start:face_idx_end]
 
         # print(f"vertices: {vertices.shape}")
         # print(f"faces: {faces.shape}")
         # print(f"BEFORE: {tex.shape}")
-        material_id = sys.mj_model.geom_matid[geom_num]
+        material_id = sys.geom_matid[geom_num]
         tex = sys.mat_rgba[material_id][:3].reshape((1, 1, 3))
         # print(f"AFTER: {tex.shape}")
 
@@ -390,8 +405,8 @@ def _vmap_build(
     )
 
     # (106, 3), (106, 4)
-    print(f"sys.geom_pos: {sys.mj_model.geom_pos.shape}")
-    print(f"sys.geom_quat: {sys.mj_model.geom_quat.shape}")
+    print(f"sys.geom_pos: {sys.geom_pos.shape}")
+    print(f"sys.geom_quat: {sys.geom_quat.shape}")
 
     # rot_raw = pipeline_states.x.rot[body_id]
     # rot = jnp.array([rot_raw[1], rot_raw[2], rot_raw[3], rot_raw[0]])
@@ -424,8 +439,8 @@ def _vmap_build(
         pos, mat = local_to_global(
             x.pos[body_id - 1],
             x.rot[body_id - 1],
-            sys.mj_model.geom_pos[geom_num],
-            sys.mj_model.geom_quat[geom_num],
+            sys.geom_pos[geom_num],
+            sys.geom_quat[geom_num],
         )
         print(f"pos: {pos.shape}")
         print(f"3x3: {mat.shape}")
@@ -433,6 +448,29 @@ def _vmap_build(
         off = pos
         rot = quat_from_3x3(mat)
     return model, rot, off
+
+
+@partial(jax.vmap, in_axes=(0, 0, None, None))
+def _vmap_build_objects_inner(idx, geom_id, sys, pipeline_states):
+    tex = sys.geom_rgba[idx, :3].reshape((1, 1, 3))
+    specular_map = jax.lax.full(tex.shape[:2], 2.0)
+
+    model, rot, off = _vmap_build(
+        sys, pipeline_states, specular_map, tex, geom_id, idx, sys.geom_bodyid[idx]
+    )
+
+
+# @partial(jax.vmap, in_axes=(None, 0))
+@partial(jax.jit)
+def _vmap_build_objects(sys: brax.System, pipeline_states: brax.State):
+    _vmap_build_objects_inner(
+        jnp.arange(sys.geom_type.shape[0]),
+        sys.geom_type,
+        sys,
+        pipeline_states,
+    )
+    print("called the inner build.")
+    qqq
 
 
 @jax.jit
@@ -452,39 +490,16 @@ def _build_objects(sys: brax.System, pipeline_states: brax.State) -> list[Obj]:
     def take_i(obj, i):
         return jax.tree_map(lambda x: jnp.take(x, i, axis=0), obj)
 
-    # Loop through each geom type (sys.mj_model.geom_type) in the list of the
+    # Loop through each geom type (sys.geom_type) in the list of the
     # environment's geoms. Within each step in the loop, loop over each of the
     # batched envs, create the N geoms (N = num of parallel envs) in a list
     # final outer list is len of ngeom, and len of each inner list is len of
     # N.
 
-    # print(f"pipeline_states: {type(pipeline_states)}")
-    # print(f"n envs: {pipeline_states.geom_xpos.shape}")
-    # print(f"links: {type(pipeline_states.contact)}")
-    # print(
-    #    f"idxs: {pipeline_states.contact.link_idx[0].shape} // {pipeline_states.contact.link_idx[1].shape}"
-    # )
-
-    # print(
-    #    f"type: {type(pipeline_states.contact.link_idx[0])} // {type(pipeline_states.contact.link_idx[1])}"
-    # )
-
-    # print(f"geom_bodyid: {sys.geom_bodyid}")
-    # print(f"dof_parentid: {sys.dof_parentid}")
-    # qqq
-
-    ## Can we use the idx from sys.geom_bodyid to query sys.dof_parentid?
-
-    # link_idxs = [x for x in pipeline_states.contact.link_idx[1]]
-    # print(f"link_idxs: {len(link_idxs)}")
-
-    # print(f"dof_parentid: {sys.dof_parentid} // {sys.dof_parentid.shape}")
-    print(f"bbox: {sys.geom_size} // {sys.geom_size.shape}")
-    # qqq
     # cuboid.verts
-    for idx, geom_id in enumerate(sys.mj_model.geom_type):
+    for idx, geom_id in enumerate(sys.geom_type):
         print(f"geom_id: {geom_id}")
-        tex = sys.mj_model.geom_rgba[idx, :3].reshape((1, 1, 3))
+        tex = sys.geom_rgba[idx, :3].reshape((1, 1, 3))
         # reference: https://github.com/erwincoumans/tinyrenderer/blob/89e8adafb35ecf5134e7b17b71b0f825939dc6d9/model.cpp#L215
         specular_map = jax.lax.full(tex.shape[:2], 2.0)
 
