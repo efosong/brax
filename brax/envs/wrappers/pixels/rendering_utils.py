@@ -511,33 +511,33 @@ def _build_objects(sys: brax.System, pipeline_states: brax.State) -> list[Obj]:
         link_idx = sys.geom_bodyid[idx] - 1
 
         # TODO: temporary for dev. remove when done
-        if geom_id in [0, 1, 2, 3, 4, 5, 6, 7]:  # [0, 1, 2, 3]:
-            model, rot, off = _vmap_build(
-                sys,
-                pipeline_states,
-                specular_map,
-                tex,
-                geom_id,
-                idx,
-                sys.geom_bodyid[idx],
+        # if geom_id in [0, 1, 2, 3, 4, 5, 6, 7]:  # [0, 1, 2, 3]:
+        model, rot, off = _vmap_build(
+            sys,
+            pipeline_states,
+            specular_map,
+            tex,
+            geom_id,
+            idx,
+            sys.geom_bodyid[idx],
+        )
+
+        outs = [
+            (
+                Instance(model=jax.tree_map(lambda x: x[i], model)),
+                jax.tree_map(lambda x: x[i], rot),
+                jax.tree_map(lambda x: x[i], off),
             )
+            for i in range(model.verts.shape[0])
+        ]
 
-            outs = [
-                (
-                    Instance(model=jax.tree_map(lambda x: x[i], model)),
-                    jax.tree_map(lambda x: x[i], rot),
-                    jax.tree_map(lambda x: x[i], off),
-                )
-                for i in range(model.verts.shape[0])
-            ]
-
-            print(f"outs: {type(outs)} // {len(outs)}")
-            outs = [
-                Obj(instance=instance, link_idx=link_idx, rot=rot, off=off)
-                for (instance, rot, off) in outs
-            ]
-        else:
-            outs = []
+        print(f"outs: {type(outs)} // {len(outs)}")
+        outs = [
+            Obj(instance=instance, link_idx=link_idx, rot=rot, off=off)
+            for (instance, rot, off) in outs
+        ]
+        # else:
+        #    outs = []
         # Plane
         # if geom_id == 0:
         #    # geom_xpos is (106, 3) -- what we want
