@@ -23,7 +23,7 @@ from flax import struct
 import jax
 from jax import numpy as jp
 
-from .pixels.rendering_utils import PixelState
+from .pixels.rendering_utils import PixelState, SysAttributes
 import wrappers.pixels.rendering_utils as ru
 
 
@@ -274,6 +274,23 @@ class PixelWrapper(PipelineEnv):
         self.hw = hw
         self.frame_stack = frame_stack
         self.return_float32 = return_float32
+        self.jax_sys = SysAttributes(
+            geom_rbound=jp.array(env.sys.mj_model.geom_rbound),
+            geom_size=jp.array(env.sys.mj_model.geom_size),
+            geom_dataid=jp.array(env.sys.mj_model.geom_dataid),
+            nmesh=jp.array(env.sys.mj_model.nmesh),
+            mesh_vertadr=jp.array(env.sys.mj_model.mesh_vertadr),
+            mesh_vert=jp.array(env.sys.mj_model.mesh_vert),
+            mesh_faceadr=jp.array(env.sys.mj_model.mesh_faceadr),
+            mesh_face=jp.array(env.sys.mj_model.mesh_face),
+            geom_matid=jp.array(env.sys.mj_model.geom_matid),
+            mat_rgba=jp.array(env.sys.mj_model.mat_rgba),
+            geom_pos=jp.array(env.sys.mj_model.geom_pos),
+            geom_quat=jp.array(env.sys.mj_model.geom_quat),
+            geom_rgba=jp.array(env.sys.mj_model.geom_rgba),
+            geom_bodyid=jp.array(env.sys.mj_model.geom_bodyid),
+            geom_type=jp.array(env.sys.mj_model.geom_type),
+        )
 
         # The VmapWrapper is already handling this. Will likely need to remove
         # self._reset_fn = jax.vmap(env.reset)
@@ -298,7 +315,7 @@ class PixelWrapper(PipelineEnv):
         # after = self.env.sys.mj_model.geom_pos
         # print(f"delta: {(before - after).sum()}")
         # qqq
-        frames = ru.render_pixels(self.env.sys, raw_state.pipeline_state, self.hw)
+        frames = ru.render_pixels(self.jax_sys, raw_state.pipeline_state, self.hw)
 
         if not self.return_float32:
             frames = (frames * 255).astype(jp.uint8)
@@ -319,7 +336,7 @@ class PixelWrapper(PipelineEnv):
         self, rng: jp.ndarray, states: jp.ndarray, actions: jp.ndarray
     ) -> PixelState:
         raw_state = self.env.step(rng, states, actions)
-        frames = ru.render_pixels(self.env.sys, raw_state.pipeline_state, self.hw)
+        frames = ru.render_pixels(self.jax_sys, raw_state.pipeline_state, self.hw)
         if not self.return_float32:
             frames = (frames * 255).astype(jp.uint8)
 
