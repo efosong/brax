@@ -245,8 +245,8 @@ class Obj(NamedTuple):
     """col.transform.rot"""
 
 
-@partial(jax.vmap, in_axes=(None, 0, None, None, None, None, None))
 @partial(jax.jit, static_argnames=("geom_id", "geom_num", "body_id"))
+@partial(jax.vmap, in_axes=(None, 0, None, None, None, None, None))
 def _vmap_build(
     sys: brax.System,
     pipeline_states: brax.State,
@@ -414,39 +414,39 @@ def _vmap_build(
     # rot = quat_from_3x3(math.inv_3x3(pipeline_states.geom_xmat[geom_num]))
 
     # The groundplane's information is **not** within pipeline_states.x
-    if geom_id != 990:
-        # rot = quat_from_3x3(pipeline_states.geom_xmat[geom_num])
-        # off = pipeline_states.geom_xpos[geom_num]
-        # copying this thing:
-        # https://github.com/google/brax/blob/main/brax/io/json.py#L129
-        rot = sys.geom_quat[geom_num]
-        off = sys.geom_pos[geom_num]
+    # if geom_id != 990:
+    # rot = quat_from_3x3(pipeline_states.geom_xmat[geom_num])
+    # off = pipeline_states.geom_xpos[geom_num]
+    # copying this thing:
+    # https://github.com/google/brax/blob/main/brax/io/json.py#L129
+    rot = sys.geom_quat[geom_num]
+    off = sys.geom_pos[geom_num]
     # print(f"rot: {rot.shape}")
     # print(f"off: {off.shape}")
 
     # Then there's this idea...
     # https://github.com/google/brax/blob/c87dcfc5094afffb149f98e48903fb39c2b7f7af/brax/contact.py#L43
-    else:
-        # off = pipeline_states.geom_xpos[geom_num]
-        # rot = math.ang_to_quat(pipeline_states.xd.ang[body_id - 1])
+    # else:
+    #    # off = pipeline_states.geom_xpos[geom_num]
+    #    # rot = math.ang_to_quat(pipeline_states.xd.ang[body_id - 1])
 
-        def local_to_global(pos1, quat1, pos2, quat2):
-            pos = pos1 + math.rotate(pos2, quat1)
-            mat = math.quat_to_3x3(math.quat_mul(quat1, quat2))
-            return pos, mat
+    #    def local_to_global(pos1, quat1, pos2, quat2):
+    #        pos = pos1 + math.rotate(pos2, quat1)
+    #        mat = math.quat_to_3x3(math.quat_mul(quat1, quat2))
+    #        return pos, mat
 
-        x = pipeline_states.x.concatenate(base.Transform.zero((1,)))
-        pos, mat = local_to_global(
-            x.pos[body_id - 1],
-            x.rot[body_id - 1],
-            sys.geom_pos[geom_num],
-            sys.geom_quat[geom_num],
-        )
-        print(f"pos: {pos.shape}")
-        print(f"3x3: {mat.shape}")
+    #    x = pipeline_states.x.concatenate(base.Transform.zero((1,)))
+    #    pos, mat = local_to_global(
+    #        x.pos[body_id - 1],
+    #        x.rot[body_id - 1],
+    #        sys.geom_pos[geom_num],
+    #        sys.geom_quat[geom_num],
+    #    )
+    #    print(f"pos: {pos.shape}")
+    #    print(f"3x3: {mat.shape}")
 
-        off = pos
-        rot = quat_from_3x3(mat)
+    #    off = pos
+    #    rot = quat_from_3x3(mat)
     return model, rot, off
 
 
