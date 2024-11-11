@@ -74,7 +74,7 @@ class ScratchItch(PipelineEnv):
         # print(self.sys.mj_model.opt)
         # print(self.sys.opt.timestep)
         # exit()
-
+    
         self.panda_actuators_ids = []
         self.humanoid_actuators_ids = []
 
@@ -112,6 +112,14 @@ class ScratchItch(PipelineEnv):
 
         self.human_joint_id_start = 1
         self.human_joint_id_end = 18
+
+        # Retrieve joint limits
+        self.upper_joint_limits = mjmodel.jnt_range[:, 0]
+        self.lower_joint_limits = mjmodel.jnt_range[:, 1]
+        self.robot_upper_joint_limits = self.upper_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
+        self.robot_lower_joint_limits = self.lower_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
+        self.human_upper_joint_limits = self.upper_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
+        self.human_lower_joint_limits = self.lower_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
 
         
         n_frames = 4
@@ -172,17 +180,20 @@ class ScratchItch(PipelineEnv):
         human_obs = self._get_human_obs(pipeline_state, info)
         #obs = jp.concatenate((robo_obs, human_obs))
         obs = jp.concatenate((
+            # robot
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
-            robo_obs["distance_to_target"].reshape((1,)),
+            robo_obs["distance_to_target"].reshape((3,)),
             robo_obs["target_position"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
             robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["robo_joint_angles"],
+            robo_obs["robo_joint_vel"],
+            # human
             human_obs["tool_position"],
             human_obs["tool_orientation"],
-            human_obs["distance_to_target"].reshape((1,)),
+            human_obs["distance_to_target"].reshape((3,)),
             human_obs["target_position"],
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
@@ -197,8 +208,18 @@ class ScratchItch(PipelineEnv):
             "weighted_reward_dist": zero,
             "weighted_reward_ctrl": zero,
             "weighted_reward_scratching": zero, 
-            "in_contact": jp.array(False),
-            "scratcher_force": zero
+            "in_contact": zero,
+            "ee_itch_dist": zero,
+            "force_threshold": zero,
+            "scratcher_force": zero,
+            "scratcher_force_x": zero,
+            "scratcher_force_y": zero,
+            "scratcher_force_z": zero,
+            "scratcher_force_tx": zero,
+            "scratcher_force_ty": zero,
+            "scratcher_force_tz": zero,
+
+
         }
         return State(pipeline_state, obs, reward, done, metrics, info)
 
@@ -208,7 +229,7 @@ class ScratchItch(PipelineEnv):
         assert pipeline_state0 is not None
         pipeline_state = self.pipeline_step(pipeline_state0, action)
 
-        ctrl_cost = -jp.sum(jp.square(action))
+        # recompute obs
         robo_obs = self._get_robo_obs(pipeline_state, state.info)
         human_obs = self._get_human_obs(pipeline_state, state.info)
         obs = jp.concatenate((
@@ -216,50 +237,62 @@ class ScratchItch(PipelineEnv):
             # robo_obs["velocity"],
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
-            robo_obs["distance_to_target"].reshape((1,)),
+            robo_obs["distance_to_target"].reshape((3,)),
             robo_obs["target_position"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
             robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["robo_joint_angles"],
+            robo_obs["robo_joint_vel"],
             # human_obs["position"],
             # human_obs["velocity"],
             human_obs["tool_position"],
             human_obs["tool_orientation"],
-            human_obs["distance_to_target"].reshape((1,)),
+            human_obs["distance_to_target"].reshape((3,)),
             human_obs["target_position"],
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
             human_obs["force_on_human"].reshape((6,)),
             human_obs["human_joint_angles"],           
         ))
+
+        # COMPUTE REWARDS
+        # 1) inverse distance reward for end-effector to reach itch target (tanh minimises dist faster)
+        dist = jp.linalg.norm(robo_obs["distance_to_target"])
+        r_dist = (1 - jp.tanh(dist / self._dist_scale))
+        # r_dist = jp.exp(-dist**2/self._dist_scale)
+
+        # 2) scratch reward for making contact
+        # scratcher_vel = (
+        #     pipeline_state.site_xpos[self.panda_scratcher_tip_idx] - pipeline_state0.site_xpos[self.panda_scratcher_tip_idx]
+        # ) / self.dt
+        # scratcher_speed = jp.linalg.norm(scratcher_vel)
+        scratcher_force = human_obs["force_on_human"]
+
+        scratcher_force_normal = scratcher_force[0]
         
-        dist = -robo_obs["distance_to_target"]
-        r_dist = jp.exp(-dist**2/self._dist_scale)
-        # This reward should mimick scratching but I'm not sure the scale is correct i.e. 0.005 might be too large or too small of a distance
-        scratcher_vel = (
-            pipeline_state.site_xpos[self.panda_scratcher_tip_idx] - pipeline_state0.site_xpos[self.panda_scratcher_tip_idx]
-        ) / self.dt
-        scratcher_speed = jp.linalg.norm(scratcher_vel)
-        scratcher_force = jp.linalg.norm(human_obs["force_on_human"])
-
-        # in contact
-        in_contact = (r_dist < self._dist_scale)
-        # force_threshold = (scratcher_force > 3.0)
-        r_scratching = in_contact * scratcher_force #force_threshold
-
-
+        # less than 1cm for contact
+        in_contact = (dist < 0.05).astype(float)
+        force_threshold = (scratcher_force_normal > 10.0).astype(float)
+        # r_scratching = in_contact * scratcher_force #force_threshold
+        r_scratching = in_contact * force_threshold
         # Chosen Boltzmann-like reward functions for scratcher speed and force, but we could swap with alternatives.
         # r_scratching = (
         #         (r_dist < self._dist_scale)
         #         * scratcher_speed/self._target_scratcher_speed * jp.exp(-scratcher_speed/self._target_scratcher_speed)
         #         * scratcher_force/self._target_scratcher_force * jp.exp(-scratcher_force/self._target_scratcher_force)
         # )
+
+        # 3) penalty reward to discourage unnecessary motions
+        # ctrl_cost = -jp.sum(jp.square(action))
+        ctrl_cost = -jp.sum(jp.square(robo_obs["robo_joint_vel"]))
+
+        # sum rewards
         reward = self._dist_reward_weight*r_dist + self._ctrl_cost_weight*ctrl_cost + self._scratching_reward_weight*r_scratching
 
         done = 0.0
-        # print(in_contact.astype(jp.float32))
 
+        # logging
         state.metrics.update(
             reward_dist = r_dist,
             reward_ctrl = ctrl_cost,
@@ -268,7 +301,16 @@ class ScratchItch(PipelineEnv):
             weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost,
             weighted_reward_scratching = self._scratching_reward_weight*r_scratching,
             in_contact = in_contact,
-            scratcher_force = scratcher_force
+            ee_itch_dist = dist, 
+            force_threshold = force_threshold,
+            scratcher_force = scratcher_force_normal,
+            scratcher_force_x = scratcher_force[0],
+            scratcher_force_y = scratcher_force[1],
+            scratcher_force_z = scratcher_force[2],
+            scratcher_force_tx = scratcher_force[3],
+            scratcher_force_ty = scratcher_force[4],
+            scratcher_force_tz = scratcher_force[5],
+
         )
 
         return state.replace(
@@ -277,19 +319,37 @@ class ScratchItch(PipelineEnv):
             reward=reward,
             done=done
         )
+    
+    def print_function(self, name, x):
+        jax.debug.print(f"{name}: {x}")
+
 
     # TODO: actually whether or not they make contact should not be used in the observation funciton but in the reward
     # observation should only include the distance from end effectors to the target which I can find with .site_xpos or .geom_xpos
     def _get_robo_obs(self, pipeline_state, state_info) -> jax.Array:
         """Returns the environment observations."""
+        # get distance (3d) from ee to target
         tool_position = pipeline_state.site_xpos[self.panda_scratcher_tip_idx]
         tool_orientation = pipeline_state.xquat[self.panda_scratcher_body_idx]
-        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
-        robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
         target_position = self._get_scratch_xpos(pipeline_state, state_info)
-        distance_to_target = jp.linalg.norm(target_position - tool_position)
+        distance_to_target = target_position - tool_position
+
+        # human pos - TODO: see if this is useful/normalise/express differently
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
+
+        # normalise joint angles to range [0, 1], then [-1, 1]
+        robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
+        normalised_robo_joint_angles = (robo_joint_angles - self.robot_lower_joint_limits) / (self.robot_upper_joint_limits - self.robot_lower_joint_limits)
+        normalised_robo_joint_angles = 2 * normalised_robo_joint_angles - 1
+        robo_joint_vel = pipeline_state.qd[self.panda_joint_id_start:self.panda_joint_id_end]
+        # TODO: normalise joint velocities
+
+        # forces
+        # this is just noise right now - add back in once touch sensor is added
+        # 6x values are force and torque, just return 3
+        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        # TODO: normalise
 
         return {
             "tool_position": tool_position,
@@ -299,7 +359,8 @@ class ScratchItch(PipelineEnv):
             "human_uarm_pos": human_uarm_pos,
             "human_larm_pos": human_larm_pos,
             "force_on_tool": force_on_tool,
-            "robo_joint_angles": robo_joint_angles  
+            "robo_joint_angles": normalised_robo_joint_angles,
+            "robo_joint_vel": robo_joint_vel
         }
     
 
@@ -310,12 +371,15 @@ class ScratchItch(PipelineEnv):
         tool_orientation = pipeline_state.xquat[self.panda_scratcher_body_idx]        
         tool_orientation = pipeline_state.xquat[self.panda_effector_idx]
         target_position = self._get_scratch_xpos(pipeline_state, state_info)
-        distance_to_target = jp.linalg.norm(target_position - tool_position)
+        # distance_to_target = jp.linalg.norm(target_position - tool_position)
         human_joint_angles = pipeline_state.qpos[self.human_joint_id_start:self.human_joint_id_end]
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
         
         force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+
+
+        distance_to_target = target_position - tool_position
 
         return {
             "tool_position": tool_position,
