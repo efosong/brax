@@ -184,9 +184,9 @@ class ScratchItch(PipelineEnv):
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
             robo_obs["distance_to_target"].reshape((3,)),
-            robo_obs["target_position"],
-            robo_obs["human_uarm_pos"],
-            robo_obs["human_larm_pos"],
+            # robo_obs["target_position"],
+            # robo_obs["human_uarm_pos"],
+            # robo_obs["human_larm_pos"],
             robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
@@ -238,9 +238,9 @@ class ScratchItch(PipelineEnv):
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
             robo_obs["distance_to_target"].reshape((3,)),
-            robo_obs["target_position"],
-            robo_obs["human_uarm_pos"],
-            robo_obs["human_larm_pos"],
+            # robo_obs["target_position"],
+            # robo_obs["human_uarm_pos"],
+            # robo_obs["human_larm_pos"],
             robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
@@ -335,8 +335,8 @@ class ScratchItch(PipelineEnv):
         distance_to_target = target_position - tool_position
 
         # human pos - TODO: see if this is useful/normalise/express differently
-        human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
-        human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
+        # human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
+        # human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
         # normalise joint angles to range [0, 1], then [-1, 1]
         robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
@@ -355,9 +355,9 @@ class ScratchItch(PipelineEnv):
             "tool_position": tool_position,
             "tool_orientation": tool_orientation,
             "distance_to_target": distance_to_target,
-            "target_position": target_position,
-            "human_uarm_pos": human_uarm_pos,
-            "human_larm_pos": human_larm_pos,
+            # "target_position": target_position,
+            # "human_uarm_pos": human_uarm_pos,
+            # "human_larm_pos": human_larm_pos,
             "force_on_tool": force_on_tool,
             "robo_joint_angles": normalised_robo_joint_angles,
             "robo_joint_vel": robo_joint_vel

@@ -69,29 +69,17 @@
 
   <default>
     <geom contype="0" conaffinity="0"/>
-    <default class="chair">
-      <geom contype="0" conaffinity="0"/>
-      <default class="c_chair_upper">
-        <geom contype="2" conaffinity="52" group="3" rgba="1 0 0 0.1"/>
-      </default>
-      <default class="c_chair_lower">
-        <geom contype="1" conaffinity="12" group="3" rgba="1 0 0 0.1"/>
-      </default>
-      <default class="no-c_chair">
-        <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
-      </default>
-      <material specular="0.5" shininess="0.25"/>
-    </default>
+    
     <default class="humanoid">
       <geom contype="0" conaffinity="0"/>
       <default class="c_human_right-arm">
-        <geom contype="32" conaffinity="6" />
+        <geom contype="1" conaffinity="62" />
       </default>
       <default class="c_human_upper-body">
-        <geom contype="16" conaffinity="2" />
+        <geom contype="2" conaffinity="57" />
       </default>
       <default class="c_human_lower-body">
-        <geom contype="8" conaffinity="1"/>
+        <geom contype="4" conaffinity="121"/>
       </default>
       <default class="no-c_human">
         <geom contype="0" conaffinity="0"/>
@@ -100,6 +88,7 @@
       <general dyntype="none" biastype="affine" ctrlrange="-.4 .4" ctrllimited="true"/>
       <material specular="0.5" rgba="0.4 0.33 0.26 1.0"/>
     </default>
+
     <default class="panda">
       <geom contype="0" conaffinity="0"/>
       <joint armature="0.1" damping="1" axis="0 0 1" range="-2.8973 2.8973"/>
@@ -108,14 +97,28 @@
         <joint axis="0 1 0" type="slide" range="0 0.04"/>
       </default>
       <default class="c_robot_tool">
-        <geom contype="4" conaffinity="35" rgba="0 0 1 1.0"/>
+        <geom contype="8" conaffinity="39" rgba="0 0 1 1.0"/>
       </default>
       <default class="c_robot_hand">
-        <geom contype="4" conaffinity="35" group="3" rgba="0 0 1 0.1"/>
+        <geom contype="16" conaffinity="39" group="3" rgba="0 0 1 0.1"/>
       </default>
       <default class="no-c_robot">
         <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
       </default>
+    </default>
+
+    <default class="chair">
+      <geom contype="0" conaffinity="0"/>
+      <default class="c_chair_upper">
+        <geom contype="32" conaffinity="27" group="3" rgba="1 0 0 0.1"/>
+      </default>
+      <default class="c_chair_lower">
+        <geom contype="64" conaffinity="4" group="3" rgba="1 0 0 0.1"/>
+      </default>
+      <default class="no-c_chair">
+        <geom contype="0" conaffinity="0" group="3" rgba="0 1 0 0.1"/>
+      </default>
+      <material specular="0.5" shininess="0.25"/>
     </default>
     <default class="visual">
       <geom type="mesh" contype="0" conaffinity="0" group="2"/>
@@ -153,7 +156,24 @@
 
   <actuator>
     <!-- Human -->
-    <general class="humanoid" gear="100" joint="abdomen_y" name="abdomen_y" biasprm="0 -0.004 0"/>
+    <general class="humanoid" gear="100" joint="abdomen_y" name="abdomen_y" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="100" joint="abdomen_z" name="abdomen_z" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="100" joint="abdomen_x" name="abdomen_x" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="100" joint="right_hip_x" name="right_hip_x" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="100" joint="right_hip_z" name="right_hip_z" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="300" joint="right_hip_y" name="right_hip_y" biasprm="0 -0.0005 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="200" joint="right_knee" name="right_knee" biasprm="0 -0.000 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="100" joint="left_hip_x" name="left_hip_x" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="100" joint="left_hip_z" name="left_hip_z" biasprm="0 -0.004 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="300" joint="left_hip_y" name="left_hip_y" biasprm="0 -0.0005 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="200" joint="left_knee" name="left_knee" biasprm="0 -0.000 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="25" joint="right_shoulder1" name="right_shoulder1" biasprm="0 -0.001 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="25" joint="right_shoulder2" name="right_shoulder2" biasprm="0 -0.001 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="25" joint="right_elbow" name="right_elbow" biasprm="0 -0.001 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="25" joint="left_shoulder1" name="left_shoulder1" biasprm="0 -0.001 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="25" joint="left_shoulder2" name="left_shoulder2" biasprm="0 -0.001 0" ctrlrange="-0.0001 0.0001"/>
+    <general class="humanoid" gear="25" joint="left_elbow" name="left_elbow" biasprm="0 -0.001 0" ctrlrange="-0.0001 0.0001"/>
+    <!-- <general class="humanoid" gear="100" joint="abdomen_y" name="abdomen_y" biasprm="0 -0.004 0"/>
     <general class="humanoid" gear="100" joint="abdomen_z" name="abdomen_z" biasprm="0 -0.004 0" />
     <general class="humanoid" gear="100" joint="abdomen_x" name="abdomen_x" biasprm="0 -0.004 0" />
     <general class="humanoid" gear="100" joint="right_hip_x" name="right_hip_x" biasprm="0 -0.004 0" />
@@ -169,7 +189,7 @@
     <general class="humanoid" gear="25" joint="right_elbow" name="right_elbow" biasprm="0 -0.001 0" />
     <general class="humanoid" gear="25" joint="left_shoulder1" name="left_shoulder1" biasprm="0 -0.001 0"/>
     <general class="humanoid" gear="25" joint="left_shoulder2" name="left_shoulder2" biasprm="0 -0.001 0"/>
-    <general class="humanoid" gear="25" joint="left_elbow" name="left_elbow" biasprm="0 -0.001 0"/>
+    <general class="humanoid" gear="25" joint="left_elbow" name="left_elbow" biasprm="0 -0.001 0"/> -->
     <!-- Panda -->
     <general class="panda" name="actuator1" joint="joint1" gainprm="4500" biasprm="0 -1433 -450" ctrlrange="-0.9222 0.9222"/>
     <general class="panda" name="actuator2" joint="joint2" gainprm="4500" biasprm="0 -1433 -450" ctrlrange="-0.5611 0.5611"/>
