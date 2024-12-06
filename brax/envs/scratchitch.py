@@ -62,13 +62,20 @@ class ScratchItch(PipelineEnv):
         if backend == "mjx":
             self.sys = self.sys.tree_replace(
                 {
-                    "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON,
-                    "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
-                    "opt.iterations": 4,
-                    "opt.ls_iterations": 4,
+                    "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON, # Try mjSOL_CG for better stability
+                    # "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
+                    "opt.iterations": 1,  # max number of iterations for main solver, O(n)
+                    "opt.ls_iterations": 1, # helps with stability, O(iterations x ls_iterations)
                     "opt.timestep": 0.01
                 }
             )
+
+#             self.sys = self.sys.tree_replace({
+#     "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON,  
+#     "opt.iterations": 100,  # Increase from 4
+#     "opt.ls_iterations": 8,  # Increase from 4
+#     "opt.timestep": 0.0005  # Decrease from 0.001
+# })
 
         # physics timestep - 100Hz
         # print(self.sys.mj_model.opt)
@@ -267,13 +274,16 @@ class ScratchItch(PipelineEnv):
         #     pipeline_state.site_xpos[self.panda_scratcher_tip_idx] - pipeline_state0.site_xpos[self.panda_scratcher_tip_idx]
         # ) / self.dt
         # scratcher_speed = jp.linalg.norm(scratcher_vel)
+        # scratcher_force = human_obs["force_on_human"]
+        # scratcher_force = human_obs["force_on_tool"]
         scratcher_force = human_obs["force_on_human"]
+
 
         scratcher_force_normal = scratcher_force[0]
         
         # less than 1cm for contact
         in_contact = (dist < 0.05).astype(float)
-        force_threshold = ((scratcher_force_normal > 10.0) & (scratcher_force_normal < 50.0)).astype(float)
+        force_threshold = ((scratcher_force_normal > 1.0) & (scratcher_force_normal < 50.0)).astype(float)
         # r_scratching = in_contact * scratcher_force #force_threshold
         r_scratching = in_contact * force_threshold
         # Chosen Boltzmann-like reward functions for scratcher speed and force, but we could swap with alternatives.
@@ -352,15 +362,19 @@ class ScratchItch(PipelineEnv):
         # TODO: normalise
 
         return {
+            # proprioception
+            "robo_joint_angles": normalised_robo_joint_angles,
+            "robo_joint_vel": robo_joint_vel,
             "tool_position": tool_position,
             "tool_orientation": tool_orientation,
+            # tactile
+            "force_on_tool": force_on_tool,
+            # ground truth
             "distance_to_target": distance_to_target,
+            # to remove
             "target_position": target_position,
             "human_uarm_pos": human_uarm_pos,
-            "human_larm_pos": human_larm_pos,
-            "force_on_tool": force_on_tool,
-            "robo_joint_angles": normalised_robo_joint_angles,
-            "robo_joint_vel": robo_joint_vel
+            "human_larm_pos": human_larm_pos,            
         }
     
 
@@ -377,8 +391,6 @@ class ScratchItch(PipelineEnv):
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
         
         force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
-
-
         distance_to_target = target_position - tool_position
 
         return {
