@@ -111,7 +111,7 @@
                     </body>
                     <body name="wiper" childclass="c_robot_tool" pos="0 0 0.1" quat="0 0 0 1">
                       <geom name="wiper_base" type="box" pos="0 0 0" size="0.03 0.03 0.03"/> 
-                      <geom name="wiper_pad" type="box" pos="0 0 0.03" size="0.05 0.05 0.006" rgba="1 0 0 1"/> 
+                      <geom name="wiper_pad" type="box" pos="0 0 0.03" size="0.05 0.05 0.006" rgba="0 1 0 1"/> 
                       <site name="wiper_centre" type="sphere" pos="0 0 0.03" size="0.010" rgba="0 1 1 1"/> 
                     </body>
                   </body>
