@@ -198,10 +198,10 @@ class ScratchItch(PipelineEnv):
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             # human = 3 + 4 + 3 + 3 + 3 + 3 + 3 + 17 = 39
-            human_obs["distance_to_target"].reshape((3,)),
+            # human_obs["distance_to_target"].reshape((3,)),
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
-            human_obs["force_on_human"].reshape((3,)),
+            # human_obs["force_on_human"].reshape((3,)),
             human_obs["human_joint_angles"],           
         ))
 
@@ -243,10 +243,10 @@ class ScratchItch(PipelineEnv):
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             # human obs
-            human_obs["distance_to_target"].reshape((3,)),
+            # human_obs["distance_to_target"].reshape((3,)),
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
-            human_obs["force_on_human"].reshape((3,)),
+            # human_obs["force_on_human"].reshape((3,)),
             human_obs["human_joint_angles"],           
         ))
 
@@ -388,10 +388,10 @@ class ScratchItch(PipelineEnv):
         normalised_force_on_tool = clipped_force_on_tool / self.max_force
 
         return {
-            "distance_to_target": distance_to_target,
+            # "distance_to_target": distance_to_target,
             "human_uarm_pos": human_uarm_pos,
             "human_larm_pos": human_larm_pos,
-            "force_on_human": normalised_force_on_tool,
+            # "force_on_human": normalised_force_on_tool,
             "human_joint_angles": human_joint_angles
         }
     
