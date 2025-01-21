@@ -64,9 +64,9 @@ class ScratchItch(PipelineEnv):
                 {
                     "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON,
                     "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
-                    "opt.iterations": 4,
-                    "opt.ls_iterations": 4,
-                    "opt.timestep": 0.01
+                    "opt.iterations": 1,
+                    "opt.ls_iterations": 1,
+                    "opt.timestep": 0.001
                 }
             )
 
@@ -95,6 +95,7 @@ class ScratchItch(PipelineEnv):
         self.panda_scratcher_tip_idx = mj_name2id(mjmodel, mujoco.mjtObj.mjOBJ_SITE, "scratcher_point")
         self.panda_scratcher_body_idx = mj_name2id(mjmodel, BODY_IDX, "scratcher")
 
+        
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_uarm_geom_idx = mj_name2id(mjmodel, GEOM_IDX, "right_uarm1")
         self.human_uarm_target_idx = mj_name2id(mjmodel, GEOM_IDX, "target-u")
@@ -102,10 +103,9 @@ class ScratchItch(PipelineEnv):
         self.human_larm_geom_idx = mj_name2id(mjmodel, GEOM_IDX, "right_larm")
         self.human_larm_target_idx = mj_name2id(mjmodel, GEOM_IDX, "target-l")
         
-        # self.contact_force = jax.vmap(contact_force, in_axes=(None, 0, None, None))
-
-        self.UARM_TOOL_CONTACT_ID = 273
-        self.LARM_TOOL_CONTACT_ID = 274
+        # generate these values using >> JaxMARL/baselines/IPPO$ python find_contact_pairs.py
+        self.UARM_TOOL_CONTACT_ID = 457
+        self.LARM_TOOL_CONTACT_ID = 452
 
         self.panda_joint_id_start = 18
         self.panda_joint_id_end = 24
@@ -120,7 +120,6 @@ class ScratchItch(PipelineEnv):
         self.robot_lower_joint_limits = self.lower_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
         self.human_upper_joint_limits = self.upper_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
         self.human_lower_joint_limits = self.lower_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
-
         
         n_frames = 4
         kwargs["n_frames"] = kwargs.get("n_frames", n_frames)
@@ -134,6 +133,7 @@ class ScratchItch(PipelineEnv):
         self._target_scratcher_speed = target_scratcher_speed
         self._target_scratcher_force = target_scratcher_force
         self._reset_noise_scale = reset_noise_scale
+
 
     def reset(self, rng: jax.Array) -> State:
         """Resets the environment to an initial state."""
@@ -187,7 +187,7 @@ class ScratchItch(PipelineEnv):
             robo_obs["target_position"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
-            robo_obs["force_on_tool"].reshape((6,)),
+            robo_obs["force_on_tool"].reshape((3,)),
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             # human
@@ -241,7 +241,7 @@ class ScratchItch(PipelineEnv):
             robo_obs["target_position"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
-            robo_obs["force_on_tool"].reshape((6,)),
+            robo_obs["force_on_tool"].reshape((3,)),
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             # human_obs["position"],
@@ -273,7 +273,7 @@ class ScratchItch(PipelineEnv):
         
         # less than 1cm for contact
         in_contact = (dist < 0.05).astype(float)
-        force_threshold = ((scratcher_force_normal > 10.0) & (scratcher_force_normal < 50.0)).astype(float)
+        force_threshold = ((scratcher_force_normal > 1.0) & (scratcher_force_normal < 50.0)).astype(float)
         # r_scratching = in_contact * scratcher_force #force_threshold
         r_scratching = in_contact * force_threshold
         # Chosen Boltzmann-like reward functions for scratcher speed and force, but we could swap with alternatives.
@@ -307,9 +307,9 @@ class ScratchItch(PipelineEnv):
             scratcher_force_x = scratcher_force[0],
             scratcher_force_y = scratcher_force[1],
             scratcher_force_z = scratcher_force[2],
-            scratcher_force_tx = scratcher_force[3],
-            scratcher_force_ty = scratcher_force[4],
-            scratcher_force_tz = scratcher_force[5],
+            # scratcher_force_tx = scratcher_force[3],
+            # scratcher_force_ty = scratcher_force[4],
+            # scratcher_force_tz = scratcher_force[5],
 
         )
 
@@ -348,7 +348,18 @@ class ScratchItch(PipelineEnv):
         # forces
         # this is just noise right now - add back in once touch sensor is added
         # 6x values are force and torque, just return 3
-        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)[:3]
+
+        # ids = self.contact_id(pipeline_state, self.panda_scratcher_idx, self.human_larm_geom_idx)
+        # self.print_function("id", ids)
+
+        # self.print_function("pipeline, state", dir(pipeline_state))
+
+
+        # force_on_tool = pipeline_state.qf.sensor[self.panda_scratcher_tip_idx]
+
+        # force_on_tool = self.get_body_forces(pipeline_state, self.panda_scratcher_idx)
+
         # TODO: normalise
 
         return {
@@ -424,3 +435,57 @@ class ScratchItch(PipelineEnv):
             )
         )
         return self.sys.replace(geom_pos=self.sys.geom_pos.at[target_idx].set(new_pos))
+    
+    def get_body_forces(self, state, geom_idx):
+        # Get contact data from MJX state
+        contacts = state.contact
+        print(state.contact)
+        
+        # Find matching contacts using JAX operations
+        geom1_match = contacts.geom1 == geom_idx
+        geom2_match = contacts.geom2 == geom_idx
+        contact_mask = jp.logical_or(geom1_match, geom2_match)
+        
+        # Get indices of relevant contacts
+        # contact_indices = jp.where(contact_mask)[0]
+        
+        # Calculate forces in world frame
+        # Reshape frames to (n_contacts, 3, 3)
+        # frames = contacts.frame[contact_mask].reshape(-1, 3, 3)
+        # Get forces for matching contacts
+        forces = contacts.force_local[contact_mask]
+        # Transform forces to world frame
+        # forces_world = jax.vmap(lambda f, force: f @ force)(frames, forces)
+        
+        # Sum forces
+        total_force = jp.sum(forces, axis=0)
+        
+        return total_force
+    
+    def contact_id(self, pipeline_state: State, id1: int, id2: int) -> int:
+        """Returns the contact id between two geom ids."""
+        mask = (pipeline_state.contact.geom == jp.array([id1, id2])) | (pipeline_state.contact.geom == jp.array([id2, id1])) 
+        id = jp.all(mask, axis=0)   
+        return id
+    
+    def get_feet_forces(m, dx, forces):
+        # Identifiers for the floor, right foot, and left foot
+        floor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+        right_foot_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "right_foot_collision")
+        left_foot_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_GEOM, "left_foot_collision")
+
+        # Find contacts that involve both the floor and the respective foot
+        # This assumes dx.contact.geom contains two entries per contact, one for each of the two contacting geometries
+        right_contacts = dx.contact.geom == jp.array([floor_id, right_foot_id])
+        left_contacts = dx.contact.geom == jp.array([floor_id, left_foot_id])
+
+        right_contact_ids = jp.where(jp.all(right_contacts, axis=1))[0]
+        left_contact_ids = jp.where(jp.all(left_contacts, axis=1))[0]
+
+        # Sum forces for the identified contacts
+        total_right_forces = jp.sum(forces[right_contact_ids], axis=0)
+        total_left_forces = jp.sum(forces[left_contact_ids], axis=0)
+
+        return total_right_forces, total_left_forces
+
+
