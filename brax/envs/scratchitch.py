@@ -90,6 +90,7 @@ class ScratchItch(PipelineEnv):
         self.panda_scratcher_tip_idx = (mj_name2id(mjmodel, mujoco.mjtObj.mjOBJ_SITE, "scratcher_point"))
         self.panda_scratcher_body_idx = (mj_name2id(mjmodel, BODY_IDX, "scratcher"))
 
+        
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_uarm_geom_idx = (mj_name2id(mjmodel, GEOM_IDX, "right_uarm1"))
         self.human_uarm_target_idx = mj_name2id(mjmodel, GEOM_IDX, "target-u")
@@ -115,7 +116,6 @@ class ScratchItch(PipelineEnv):
         self.robot_lower_joint_limits = self.lower_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
         self.human_upper_joint_limits = self.upper_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
         self.human_lower_joint_limits = self.lower_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
-
         n_frames = 4
         kwargs["n_frames"] = kwargs.get("n_frames", n_frames)
 
