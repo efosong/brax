@@ -91,6 +91,10 @@ class ArmManipulation(PipelineEnv):
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
 
+        # ID of the location where we want the elbow to go
+        self.elbow_target_idx = mj_name2id(mjmodel, SITE_IDX, "elbow_target")
+
+
         self.human_tuarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_uarm")
         self.human_tlarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_larm")
 
@@ -353,34 +357,39 @@ class ArmManipulation(PipelineEnv):
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
-        human_uarm_rot = pipeline_state.xmat[self.human_tuarm_idx]
-        human_larm_rot = pipeline_state.xmat[self.human_tlarm_idx]
+        # human_uarm_rot = pipeline_state.xmat[self.human_tuarm_idx]
+        # human_larm_rot = pipeline_state.xmat[self.human_tlarm_idx]
 
-        uarm_radius, uarm_hlength, _  = self.sys.geom_size[self.human_tuarm_geom] 
-        larm_radius, larm_hlength, _ = self.sys.geom_size[self.human_tlarm_geom]
+        # uarm_radius, uarm_hlength, _  = self.sys.geom_size[self.human_tuarm_geom] 
+        # larm_radius, larm_hlength, _ = self.sys.geom_size[self.human_tlarm_geom]
 
-        uarm_height_vector = jp.array([0, 0, uarm_hlength+uarm_radius])
-        larm_height_vector = jp.array([0, 0, larm_hlength+larm_radius])
+        # uarm_height_vector = jp.array([0, 0, uarm_hlength+uarm_radius])
+        # larm_height_vector = jp.array([0, 0, larm_hlength+larm_radius])
 
-        shoulder_pos_norot = human_uarm_pos + uarm_height_vector
+        # shoulder_pos_norot = human_uarm_pos + uarm_height_vector
         
-        shoulder_pos = jp.dot(human_uarm_rot, shoulder_pos_norot)
+        # shoulder_pos = jp.dot(human_uarm_rot, shoulder_pos_norot)
         
-        wrist_pos_norot = human_larm_pos - larm_height_vector
+        # wrist_pos_norot = human_larm_pos - larm_height_vector
 
-        wrist_pos = jp.dot(human_larm_rot, wrist_pos_norot)
+        # wrist_pos = jp.dot(human_larm_rot, wrist_pos_norot)
 
-        elbow_pos_norot = human_larm_pos + larm_height_vector
+        # elbow_pos_norot = human_larm_pos + larm_height_vector
 
-        elbow_pos = jp.dot(human_larm_rot, elbow_pos_norot)
+        # elbow_pos = jp.dot(human_larm_rot, elbow_pos_norot)
 
-        stomach_pos = pipeline_state.xpos[self.human_uwaist_idx]
-        waist_pos = pipeline_state.xpos[self.human_lwaist_idx]
+        # stomach_pos = pipeline_state.xpos[self.human_uwaist_idx]
+        # waist_pos = pipeline_state.xpos[self.human_lwaist_idx]
 
-        larm_waist_dist = waist_pos - human_larm_pos
+        # larm_waist_dist = waist_pos - human_larm_pos
+        # larm_waist_dist_euclidean = jp.linalg.norm(larm_waist_dist)
+
+
+        elbow_target = pipeline_state.xpos[self.elbow_target_idx]
+        larm_waist_dist = elbow_target - human_larm_pos
         larm_waist_dist_euclidean = jp.linalg.norm(larm_waist_dist)
 
-        force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
+        # force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
         
         return {
             # "position": position,
