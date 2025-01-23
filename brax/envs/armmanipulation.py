@@ -179,14 +179,14 @@ class ArmManipulation(PipelineEnv):
         # NOTE: IF THE LENGTH OF ANY OBSERVATIONS CHANGE, YOU MUST UPDATE THIS HERE:
         # jaxmarl/environments/mabrax/mappings.py#L111
         obs = jp.concatenate((
-            # robot obs length = 6 + 6 + 3  + 6 + 3 + 1 + 4 = 30
+            # robot obs length = 6 + 6 + 3 + 3 + 1 + 9 = 28
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
-            robo_obs["force_on_tool"].reshape((6,)),
+            # robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["tool_target_dist"].reshape((3,)),
             robo_obs["tool_target_dist_euclidean"].reshape((1,)),
-            robo_obs["tool_target_dist_angular"].reshape((4,)),
+            robo_obs["tool_target_dist_angular"].reshape((9,)),
             # human = 3 + 1 + 17 + 17 = 38
             human_obs["larm_waist_dist"].reshape((3,)),
             human_obs["larm_waist_dist_euclidean"].reshape((1,)),
@@ -231,10 +231,10 @@ class ArmManipulation(PipelineEnv):
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
-            robo_obs["force_on_tool"].reshape((6,)),
+            # robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["tool_target_dist"].reshape((3,)),
             robo_obs["tool_target_dist_euclidean"].reshape((1,)),
-            robo_obs["tool_target_dist_angular"].reshape((4,)),
+            robo_obs["tool_target_dist_angular"].reshape((9,)),
             # human obs
             human_obs["larm_waist_dist"].reshape((3,)),
             human_obs["larm_waist_dist_euclidean"].reshape((1,)),
@@ -255,7 +255,7 @@ class ArmManipulation(PipelineEnv):
         self._dist_reward_weight = 1
 
         ang_dist = robo_obs["tool_target_dist_angular"]
-        rot_scale = 1
+        rot_scale = 0.1
         r_rot = jp.sqrt(jp.sum(ang_dist** 2)) 
 
         larm_waist_dist = human_obs["larm_waist_dist_euclidean"]
@@ -297,14 +297,18 @@ class ArmManipulation(PipelineEnv):
 
         # we want the 3d distance from panda hook to larm_lower
         tool_position = pipeline_state.site_xpos[self.panda_hook_center_idx]
-        tool_orientation = self.xmat_to_quat(pipeline_state.site_xmat[self.panda_hook_center_idx].reshape(9))
+        tool_orientation = pipeline_state.site_xmat[self.panda_hook_center_idx]
+        # tool_orientation = self.xmat_to_quat(pipeline_state.site_xmat[self.panda_hook_center_idx].reshape(9))
 
         target_position = pipeline_state.site_xpos[self.hook_target_site]
-        target_orientation = self.xmat_to_quat(pipeline_state.site_xmat[self.hook_target_site].reshape(9))
+        target_orientation = pipeline_state.site_xmat[self.hook_target_site]
+        # target_orientation = self.xmat_to_quat(pipeline_state.site_xmat[self.hook_target_site].reshape(9))
 
         # calculate distances
         tool_target_dist = target_position - tool_position
         tool_target_dist_euclidean = jp.linalg.norm(tool_target_dist)
+        # TEMPORARY: NEED TO FIX ROTATION!
+        # tool_target_dist_angular = jp.zeros(9)
         tool_target_dist_angular = target_orientation - tool_orientation
 
         # # TODO: adjust this so the ._get_force_on_tool takes 3 args
@@ -347,7 +351,7 @@ class ArmManipulation(PipelineEnv):
             "robo_joint_vel": robo_joint_vel,
             "tool_position": tool_position,
             # # tactile
-            "force_on_tool": force_on_tool,
+            # "force_on_tool": force_on_tool,
             # ground truth
             "tool_target_dist": tool_target_dist,
             "tool_target_dist_euclidean": tool_target_dist_euclidean,
