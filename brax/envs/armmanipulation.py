@@ -92,8 +92,8 @@ class ArmManipulation(PipelineEnv):
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
 
         # ID of the location where we want the elbow to go
-        self.elbow_target_idx = mj_name2id(mjmodel, SITE_IDX, "elbow_target")
-
+        self.hook_target_site = mj_name2id(mjmodel, SITE_IDX, "hook_target")
+        self.arm_target_site = mj_name2id(mjmodel, SITE_IDX, "arm_target")
 
         self.human_tuarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_uarm")
         self.human_tlarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_larm")
@@ -264,7 +264,7 @@ class ArmManipulation(PipelineEnv):
         larm_waist_dist = human_obs["larm_waist_dist_euclidean"]
         r_waist_dist = (1 - jp.tanh(larm_waist_dist / self._dist_scale))
 
-        waist_scale = 10
+        waist_scale = 1
         reward = waist_scale*r_waist_dist + self._dist_reward_weight*r_hook_dist + self._ctrl_cost_weight*ctrl_cost
         
         done = 0.0
@@ -292,8 +292,8 @@ class ArmManipulation(PipelineEnv):
         # we want the 3d distance from panda hook to larm_lower
         tool_position = pipeline_state.site_xpos[self.panda_hook_center_idx]
         tool_orientation = pipeline_state.xquat[self.panda_hook_body_idx]
-        human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
-        hook_arm_dist = human_larm_pos - tool_position
+        hook_target = pipeline_state.site_xpos[self.hook_target_site]
+        hook_arm_dist = hook_target - tool_position
         hook_arm_dist_euclidean = jp.linalg.norm(hook_arm_dist)
 
         # # TODO: adjust this so the ._get_force_on_tool takes 3 args
@@ -354,8 +354,8 @@ class ArmManipulation(PipelineEnv):
         
         human_joint_angles = pipeline_state.qpos[self.human_joint_id_start:self.human_joint_id_end]
         
-        human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
-        human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
+        # human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
+        human_larm_pos = pipeline_state.xpos[self.human_tlarm_geom] #  human_tlarm_idx
 
         # human_uarm_rot = pipeline_state.xmat[self.human_tuarm_idx]
         # human_larm_rot = pipeline_state.xmat[self.human_tlarm_idx]
@@ -384,9 +384,9 @@ class ArmManipulation(PipelineEnv):
         # larm_waist_dist = waist_pos - human_larm_pos
         # larm_waist_dist_euclidean = jp.linalg.norm(larm_waist_dist)
 
-
-        elbow_target = pipeline_state.xpos[self.elbow_target_idx]
-        larm_waist_dist = elbow_target - human_larm_pos
+        arm_pos = pipeline_state.site_xpos[self.hook_target_site]
+        arm_target = pipeline_state.site_xpos[self.arm_target_site]
+        larm_waist_dist = arm_target - arm_pos
         larm_waist_dist_euclidean = jp.linalg.norm(larm_waist_dist)
 
         # force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
