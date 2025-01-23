@@ -28,6 +28,8 @@ from flax import struct
 import jax
 import numpy as np
 
+import jax.numpy as jp
+
 
 @struct.dataclass
 class State(base.Base):
@@ -157,6 +159,28 @@ class PipelineEnv(Env):
     ) -> Sequence[np.ndarray]:
         """Renders a trajectory using the MuJoCo renderer."""
         return image.render_array(self.sys, trajectory, height, width, camera)
+    
+    def _get_geom_pos(self, pipeline_state: base.State, geom_id: int) -> jax.Array:
+        """Returns the geoms and sizes of the environment"""
+
+        geom_xpos = pipeline_state.geom_xpos[geom_id]
+
+        return geom_xpos
+    
+    def _get_site_pos(self, pipeline_state: base.State, site_id: int) -> jax.Array:
+        """Returns the site position"""
+        site_xpos = pipeline_state.site_xpos[site_id]
+
+        return site_xpos
+    
+    def _check_distance(self, pipeline_state: base.State, site_id: int, geom2_id: int) -> jax.Array:
+        """Returns distance between a geom and a site"""
+        pos1 = self._get_site_pos(pipeline_state, site_id)
+        pos2 = self._get_geom_pos(pipeline_state, geom2_id)
+    
+        center_distance = jp.linalg.norm(pos1 - pos2, axis=-1)
+
+        return center_distance
 
 
 class Wrapper(Env):

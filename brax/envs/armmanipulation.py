@@ -8,7 +8,7 @@ import jax
 from jax import numpy as jp
 from jax.scipy.spatial.transform import Rotation
 import mujoco 
-from mujoco import mj_id2name, mj_name2id
+from mujoco import mj_id2name, mj_name2id, mju_mat2Quat
 from enum import IntEnum
 from mujoco.mjx._src.support import contact_force
 import numpy as np
@@ -92,8 +92,8 @@ class ArmManipulation(PipelineEnv):
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
 
         # ID of the location where we want the elbow to go
-        self.elbow_target_idx = mj_name2id(mjmodel, SITE_IDX, "elbow_target")
-
+        self.hook_target_site = mj_name2id(mjmodel, SITE_IDX, "hook_target")
+        self.arm_target_site = mj_name2id(mjmodel, SITE_IDX, "arm_target")
 
         self.human_tuarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_uarm")
         self.human_tlarm_geom = mj_name2id(mjmodel, GEOM_IDX, "right_larm")
@@ -179,33 +179,31 @@ class ArmManipulation(PipelineEnv):
         # NOTE: IF THE LENGTH OF ANY OBSERVATIONS CHANGE, YOU MUST UPDATE THIS HERE:
         # jaxmarl/environments/mabrax/mappings.py#L111
         obs = jp.concatenate((
-            # robot obs length = 6 + 6 + 3 + 4 + 3 + 1 = 23
+            # robot obs length = 6 + 6 + 3  + 6 + 3 + 1 + 4 = 30
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
-            robo_obs["tool_orientation"],
-            # robo_obs["force_on_tool"].reshape((3,)),
-            robo_obs["hook_arm_dist"].reshape((3,)),
-            robo_obs["hook_arm_dist_euclidean"].reshape((1,)),
-
-            # human = 3 + 1 + 17 = 21
-            # human_obs["shoulder_pos"],
-            # human_obs["elbow_pos"],
-            # human_obs["wrist_pos"],
-            # human_obs["force_on_human"].reshape((6,)),
+            robo_obs["force_on_tool"].reshape((6,)),
+            robo_obs["tool_target_dist"].reshape((3,)),
+            robo_obs["tool_target_dist_euclidean"].reshape((1,)),
+            robo_obs["tool_target_dist_angular"].reshape((4,)),
+            # human = 3 + 1 + 17 + 17 = 38
             human_obs["larm_waist_dist"].reshape((3,)),
             human_obs["larm_waist_dist_euclidean"].reshape((1,)),
-
-            human_obs["human_joint_angles"],           
+            human_obs["human_joint_angles"], 
+            human_obs["human_joint_vel"]       
+          
         ))
         reward, done, zero = jp.zeros(3)
         metrics = {
             "reward_hook_dist": zero,
+            "reward_rot": zero,
             "reward_waist_dist": zero,
             "reward_ctrl": zero,
             "weighted_reward_hook_dist": zero,
             "weighted_reward_waist_dist": zero,
-            "weighted_reward_ctrl": zero
+            "weighted_reward_ctrl": zero,
+            "weighted_reward_rot": zero
         }
 
         return State(pipeline_state, obs, reward, done, metrics)
@@ -233,20 +231,15 @@ class ArmManipulation(PipelineEnv):
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
-            robo_obs["tool_orientation"],
-            # robo_obs["force_on_tool"].reshape((3,)),
-            robo_obs["hook_arm_dist"].reshape((3,)),
-            robo_obs["hook_arm_dist_euclidean"].reshape((1,)),
-
+            robo_obs["force_on_tool"].reshape((6,)),
+            robo_obs["tool_target_dist"].reshape((3,)),
+            robo_obs["tool_target_dist_euclidean"].reshape((1,)),
+            robo_obs["tool_target_dist_angular"].reshape((4,)),
             # human obs
-            # human_obs["shoulder_pos"],
-            # human_obs["elbow_pos"],
-            # human_obs["wrist_pos"],
-            # human_obs["force_on_human"].reshape((6,)),
             human_obs["larm_waist_dist"].reshape((3,)),
             human_obs["larm_waist_dist_euclidean"].reshape((1,)),
-
-            human_obs["human_joint_angles"],           
+            human_obs["human_joint_angles"],
+            human_obs["human_joint_vel"]       
         ))
 
         # elbow_stomach_dist = jp.exp((-jp.linalg.norm(human_obs["elbow_pos"] - human_obs["stomach_pos"]))**2/self._dist_scale)
@@ -257,15 +250,19 @@ class ArmManipulation(PipelineEnv):
         # TODO: Add human preference rewards
         # COMPUTE REWARDS
         # 1) inverse distance reward for end-effector to reach itch target (tanh minimises dist faster)
-        hook_arm_dist = robo_obs["hook_arm_dist_euclidean"]
+        hook_arm_dist = robo_obs["tool_target_dist_euclidean"]
         r_hook_dist = (1 - jp.tanh(hook_arm_dist / self._dist_scale))
+        self._dist_reward_weight = 1
 
+        ang_dist = robo_obs["tool_target_dist_angular"]
+        rot_scale = 1
+        r_rot = jp.sqrt(jp.sum(ang_dist** 2)) 
 
         larm_waist_dist = human_obs["larm_waist_dist_euclidean"]
         r_waist_dist = (1 - jp.tanh(larm_waist_dist / self._dist_scale))
 
         waist_scale = 10
-        reward = waist_scale*r_waist_dist + self._dist_reward_weight*r_hook_dist + self._ctrl_cost_weight*ctrl_cost
+        reward = waist_scale*r_waist_dist + self._dist_reward_weight*r_hook_dist + self._ctrl_cost_weight*ctrl_cost + r_rot * rot_scale
         
         done = 0.0
         
@@ -273,9 +270,11 @@ class ArmManipulation(PipelineEnv):
             reward_hook_dist = r_hook_dist,
             reward_waist_dist = r_waist_dist,
             reward_ctrl = ctrl_cost,
+            reward_rot= r_rot,
             weighted_reward_hook_dist = self._dist_reward_weight*r_hook_dist,
             weighted_reward_waist_dist = waist_scale*r_waist_dist,
-            weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost
+            weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost,
+            weighted_reward_rot = r_rot * rot_scale
         )
 
         return state.replace(
@@ -286,19 +285,30 @@ class ArmManipulation(PipelineEnv):
         )
         # return (robo_obs, human_obs)
 
+    def xmat_to_quat(self, xmat):
+        w = jp.sqrt(1 + xmat[0] + xmat[4] + xmat[8]) / 2
+        x = (xmat[7] - xmat[5]) / (4*w)
+        y = (xmat[2] - xmat[6]) / (4*w)
+        z = (xmat[3] - xmat[1]) / (4*w)
+        return jp.array([w, x, y, z])
+
     def _get_robo_obs(self, pipeline_state: base.State) -> jax.Array:
         """Returns the environment observations."""
 
         # we want the 3d distance from panda hook to larm_lower
         tool_position = pipeline_state.site_xpos[self.panda_hook_center_idx]
-        tool_orientation = pipeline_state.xquat[self.panda_hook_body_idx]
-        human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
-        hook_arm_dist = human_larm_pos - tool_position
-        hook_arm_dist_euclidean = jp.linalg.norm(hook_arm_dist)
+        tool_orientation = self.xmat_to_quat(pipeline_state.site_xmat[self.panda_hook_center_idx].reshape(9))
+
+        target_position = pipeline_state.site_xpos[self.hook_target_site]
+        target_orientation = self.xmat_to_quat(pipeline_state.site_xmat[self.hook_target_site].reshape(9))
+
+        # calculate distances
+        tool_target_dist = target_position - tool_position
+        tool_target_dist_euclidean = jp.linalg.norm(tool_target_dist)
+        tool_target_dist_angular = target_orientation - tool_orientation
 
         # # TODO: adjust this so the ._get_force_on_tool takes 3 args
-        # force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
-        # robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
+        force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
 
         # human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
@@ -336,12 +346,12 @@ class ArmManipulation(PipelineEnv):
             "robo_joint_angles": normalised_robo_joint_angles,
             "robo_joint_vel": robo_joint_vel,
             "tool_position": tool_position,
-            "tool_orientation": tool_orientation,
             # # tactile
-            # "force_on_tool": normalised_force_on_tool,
+            "force_on_tool": force_on_tool,
             # ground truth
-            "hook_arm_dist": hook_arm_dist,
-            "hook_arm_dist_euclidean": hook_arm_dist_euclidean
+            "tool_target_dist": tool_target_dist,
+            "tool_target_dist_euclidean": tool_target_dist_euclidean,
+            "tool_target_dist_angular": tool_target_dist_angular
         }
 
        
@@ -349,11 +359,12 @@ class ArmManipulation(PipelineEnv):
     def _get_human_obs(self, pipeline_state: base.State) -> jax.Array:
         """Returns the environment observations"""
 
-        tool_position = pipeline_state.site_xpos[self.panda_hook_center_idx]
-        tool_orientation = pipeline_state.xquat[self.panda_hook_body_idx]
         
         human_joint_angles = pipeline_state.qpos[self.human_joint_id_start:self.human_joint_id_end]
-        
+        normalised_human_joint_angles = (human_joint_angles - self.human_lower_joint_limits) / (self.human_upper_joint_limits - self.human_lower_joint_limits)
+        normalised_human_joint_angles = 2 * normalised_human_joint_angles - 1
+        human_joint_vel = pipeline_state.qd[self.human_joint_id_start:self.human_joint_id_end]
+
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
@@ -384,9 +395,9 @@ class ArmManipulation(PipelineEnv):
         # larm_waist_dist = waist_pos - human_larm_pos
         # larm_waist_dist_euclidean = jp.linalg.norm(larm_waist_dist)
 
-
-        elbow_target = pipeline_state.xpos[self.elbow_target_idx]
-        larm_waist_dist = elbow_target - human_larm_pos
+        arm_pos = pipeline_state.site_xpos[self.hook_target_site]
+        arm_target = pipeline_state.site_xpos[self.arm_target_site]
+        larm_waist_dist = arm_target - arm_pos
         larm_waist_dist_euclidean = jp.linalg.norm(larm_waist_dist)
 
         # force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_HPLATFORM_CONTACT_ID, self.LARM_HPLATFORM_CONTACT_ID, self.UARM_HEND_CONTACT_ID, self.LARM_HEND_CONTACT_ID)
@@ -406,35 +417,15 @@ class ArmManipulation(PipelineEnv):
             # "waist_pos": waist_pos,
             # "force_on_human": force_on_human,
             # "force_on_target": force_on_target,
+            "human_joint_angles": normalised_human_joint_angles,
+            "human_joint_vel": human_joint_vel,
             "larm_waist_dist": larm_waist_dist,
             "larm_waist_dist_euclidean": larm_waist_dist_euclidean,
-            "human_joint_angles": human_joint_angles
+            
         }
         #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
-
-    def _get_geom_pos(self, pipeline_state: base.State, geom_id: int) -> jax.Array:
-        """Returns the geoms and sizes of the environment"""
-
-        geom_xpos = pipeline_state.geom_xpos[geom_id]
-
-        return geom_xpos
-    
-    def _get_site_pos(self, pipeline_state: base.State, site_id: int) -> jax.Array:
-        """Returns the site position"""
-        site_xpos = pipeline_state.site_xpos[site_id]
-
-        return site_xpos
-    
-    def _check_distance(self, pipeline_state: base.State, site_id: int, geom2_id: int) -> jax.Array:
-        """Returns distance between a geom and a site"""
-        pos1 = self._get_site_pos(pipeline_state, site_id)
-        pos2 = self._get_geom_pos(pipeline_state, geom2_id)
-    
-        center_distance = jp.linalg.norm(pos1 - pos2, axis=-1)
-
-        return center_distance
-    
+   
     def _get_force_on_tool(self, pipeline_state, uarm_tool1_id: int, larm_tool1_id:int, uarm_tool2_id: int, larm_tool2_id: int) -> jax.Array:
         """Return the force on the tool"""
         tool1_uarm = contact_force(self.sys, pipeline_state, uarm_tool1_id, False)
