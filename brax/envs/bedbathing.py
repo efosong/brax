@@ -164,27 +164,39 @@ class BedBathing(PipelineEnv):
         # self.LARM_TOOL_CONTACT_ID = jp.int32(larm_contact_id)
         # self.UARM_TOOL_CONTACT_ID = jp.int32(uarm_contact_id)
 
-        robo_obs = self._get_robo_obs(pipeline_state)
+        # does this need to happen every step
+        global_targets_uarm = self._map_cylinder_points_to_global(self.wiping_targets_uarm, pipeline_state.xmat[self.human_tuarm_idx], pipeline_state.xpos[self.human_tuarm_idx])
+        global_targets_larm = self._map_cylinder_points_to_global(self.wiping_targets_larm, pipeline_state.xmat[self.human_tlarm_idx], pipeline_state.xpos[self.human_tlarm_idx])
+        global_targets = jp.vstack((global_targets_uarm, global_targets_larm))
+
+        # get 3d distances
+        panda_wiper = pipeline_state.site_xpos[self.panda_wiper_center_idx]
+        all_distances = panda_wiper - global_targets
+        closest_distance_idx = jp.argmin(all_distances)
+        closest_target = global_targets[closest_distance_idx]
+
+        # vector for which contacts have already been activated
+        contact_vector = jp.zeros(self.n_targets)
+
+        robo_obs = self._get_robo_obs(pipeline_state, closest_target)
         human_obs = self._get_human_obs(pipeline_state)
         
         # NOTE: IF THE LENGTH OF ANY OBSERVATIONS CHANGE, YOU MUST UPDATE THIS HERE:
         # jaxmarl/environments/mabrax/mappings.py#L111
         obs = jp.concatenate((
-            # robot obs length = 6 + 6 + 3 + 4 + 3 + 1 = 23
+            # robot obs length = 6 + 6 + 3 + 4 + 6 + 3 + 1 = 29
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
-            # robo_obs["force_on_tool"].reshape((3,)),
-
-            # human = 3 + 1 + 17 = 21
-            human_obs["human_joint_angles"],   
-            # human_obs["distance_to_target"].reshape((1,)),
-            # human_obs["target_pos"],
-            # human_obs["human_uarm_pos"],
-            # human_obs["human_larm_pos"],
-            # human_obs["force_on_human"].reshape((6,)),
-            # human_obs["force_on_target"].reshape((6,)),
+            robo_obs["force_on_tool"].reshape((6,)),
+            robo_obs["wiper_target_dist"].reshape((3,)),
+            robo_obs["wiper_target_dist_euclidean"].reshape((1,)),  
+            # human = 17 + 17 + 3 + 3 = 40
+            human_obs["human_joint_angles"],
+            human_obs["human_joint_vel"],   
+            human_obs["human_uarm_pos"],
+            human_obs["human_larm_pos"],  
                     
         ))
         reward, done, zero = jp.zeros(3)
@@ -226,13 +238,13 @@ class BedBathing(PipelineEnv):
         # get 3d distances
         panda_wiper = pipeline_state.site_xpos[self.panda_wiper_center_idx]
         all_distances = panda_wiper - global_targets
+        all_distances_euclidean = jp.linalg.norm(all_distances)
 
         # vector for which contacts have already been activated
         old_contact_vector = state.info["contact_vector"]
 
         # mask distances and get closest target
-        masked_distances = jp.where(old_contact_vector == 0, jp.inf, all_distances)
-        masked_distances_euclidean = jp.linalg.norm(masked_distances)
+        masked_distances_euclidean = jp.where(old_contact_vector == 0, jp.inf, all_distances_euclidean)
         closest_distance_idx = jp.argmin(masked_distances_euclidean)
         closest_target = global_targets[closest_distance_idx]
 
@@ -244,17 +256,16 @@ class BedBathing(PipelineEnv):
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
-            robo_obs["force_on_tool"].reshape((3,)),
+            robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["wiper_target_dist"].reshape((3,)),
             robo_obs["wiper_target_dist_euclidean"].reshape((1,)),  
-            # human = 3 + 1 + 17 = 21
+            human_obs["human_joint_angles"],   
             human_obs["human_joint_vel"],   
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],     
         ))
 
         
-        contact_info = {"contact_vector": new_contact_vector}
 
         # 1) distance to closest target
         closest_distance = masked_distances_euclidean[closest_distance_idx]
@@ -270,6 +281,9 @@ class BedBathing(PipelineEnv):
         reward = self._dist_reward_weight*r_dist + self._ctrl_cost_weight*ctrl_cost + self._wiping_reward_weight*new_contacts
         
         done = jp.all(new_contact_vector == 0.0).astype(jp.float32)
+
+        contact_info = {"contact_vector": new_contact_vector}
+
         
         # also in resset
         state.metrics.update(
