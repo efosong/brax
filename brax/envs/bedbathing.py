@@ -59,7 +59,8 @@ class BedBathing(PipelineEnv):
                     "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON,
                     "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
                     "opt.iterations": 1,
-                    "opt.ls_iterations": 4,
+                    "opt.ls_iterations": 1,
+                    "opt.timestep": 0.001
                 }
             )
 
@@ -111,6 +112,15 @@ class BedBathing(PipelineEnv):
         self.human_joint_id_start = 1
         self.human_joint_id_end = 18
 
+        # Retrieve joint limits
+        self.upper_joint_limits = mjmodel.jnt_range[:, 0]
+        self.lower_joint_limits = mjmodel.jnt_range[:, 1]
+        self.robot_upper_joint_limits = self.upper_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
+        self.robot_lower_joint_limits = self.lower_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
+        self.human_upper_joint_limits = self.upper_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
+        self.human_lower_joint_limits = self.lower_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
+
+
         n_frames = 4
         kwargs["n_frames"] = kwargs.get("n_frames", n_frames)
 
@@ -154,28 +164,35 @@ class BedBathing(PipelineEnv):
         # self.LARM_TOOL_CONTACT_ID = jp.int32(larm_contact_id)
         # self.UARM_TOOL_CONTACT_ID = jp.int32(uarm_contact_id)
 
-        robo_obs = self._get_robo_obs(pipeline_state)
+        # contact_vector = state.info["contact_vector"]
+        closest_target, distances = self.get_targets(pipeline_state, contact_vector)
+
+        robo_obs = self._get_robo_obs(pipeline_state, closest_target)
         human_obs = self._get_human_obs(pipeline_state)
         #obs = jp.concatenate((robo_obs, human_obs))
         obs = jp.concatenate((
+             # robot obs length = 6 + 6 + 3 + 4 + 6 = 25
+            # robot obs length = 6 + 6 + 3 + 4 + 6 +6 = 31
+
+            robo_obs["robo_joint_angles"],
+            robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
-            # robo_obs["distance_to_target"].reshape((1,)),
-            # robo_obs["target_pos"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
             robo_obs["force_on_tool"].reshape((6,)),
-            # robo_obs["force_on_target"].reshape((6,)),
-            robo_obs["robo_joint_angles"],
+            robo_obs["wiper_target_dist"].reshape((3,)),
+            robo_obs["wiper_target_dist_euclidean"].reshape((1,)),  
+            # human = 17 + 17 + 3 + 3 = 40
+            # human = 17 + 17 + 3 + 3 = 53
+            human_obs["human_joint_angles"],
+            human_obs["human_joint_vel"],   
             human_obs["tool_position"],
             human_obs["tool_orientation"],
-            # human_obs["distance_to_target"].reshape((1,)),
-            # human_obs["target_pos"],
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
             human_obs["force_on_human"].reshape((6,)),
-            # human_obs["force_on_target"].reshape((6,)),
-            human_obs["human_joint_angles"],           
+
         ))
         reward, done, zero = jp.zeros(3)
         metrics = {
@@ -191,6 +208,26 @@ class BedBathing(PipelineEnv):
         }
         info = {"contact_vector": contact_vector}
         return State(pipeline_state, obs, reward, done, metrics, info)
+    
+    def get_targets(self, pipeline_state, contact_vector):
+        # does this need to happen every step
+        global_targets_uarm = self._map_cylinder_points_to_global(self.wiping_targets_uarm, pipeline_state.xmat[self.human_tuarm_idx], pipeline_state.xpos[self.human_tuarm_idx])
+        global_targets_larm = self._map_cylinder_points_to_global(self.wiping_targets_larm, pipeline_state.xmat[self.human_tlarm_idx], pipeline_state.xpos[self.human_tlarm_idx])
+        global_targets = jp.vstack((global_targets_uarm, global_targets_larm))
+
+        distances_all = self._target_distances(global_targets, pipeline_state.site_xpos[self.panda_wiper_center_idx])
+        distances = self._mask_contacts(distances_all, contact_vector)
+
+        # get 3d distances
+        # panda_wiper = pipeline_state.site_xpos[self.panda_wiper_center_idx]
+        # all_distances = panda_wiper - global_targets
+        # all_distances_euclidean = jp.linalg.norm(all_distances)
+
+        # mask distances and get closest target
+        # masked_distances_euclidean = jp.where(contact_vector == 0, jp.inf, all_distances_euclidean)
+        closest_distance_idx = jp.argmin(distances)
+        closest_target = global_targets[closest_distance_idx]
+        return closest_target, distances
 
     def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
@@ -206,45 +243,45 @@ class BedBathing(PipelineEnv):
         # distances = self._mask_contacts(distances_all, self.contact_vector)
 
         ctrl_cost = -jp.sum(jp.square(action))
-        robo_obs = self._get_robo_obs(pipeline_state)
+
+        # vector for which contacts have already been activated
+        contact_vector = state.info["contact_vector"]
+        closest_target, distances = self.get_targets(pipeline_state, contact_vector)
+
+        robo_obs = self._get_robo_obs(pipeline_state, closest_target)
+
+        
         human_obs = self._get_human_obs(pipeline_state)
         
         # TODO: possibly replace uarm and larm positions with joint positions
         obs = jp.concatenate((
+            robo_obs["robo_joint_angles"],
+            robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
             robo_obs["tool_orientation"],
-            # robo_obs["distance_to_target"].reshape((1,)),
-            # robo_obs["target_pos"],
             robo_obs["human_uarm_pos"],
             robo_obs["human_larm_pos"],
             robo_obs["force_on_tool"].reshape((6,)),
-            robo_obs["robo_joint_angles"],
+            robo_obs["wiper_target_dist"].reshape((3,)),
+            robo_obs["wiper_target_dist_euclidean"].reshape((1,)),  
+            human_obs["human_joint_angles"],
+            human_obs["human_joint_vel"],   
             human_obs["tool_position"],
             human_obs["tool_orientation"],
-            # human_obs["distance_to_target"].reshape((1,)),
             human_obs["human_uarm_pos"],
             human_obs["human_larm_pos"],
-            human_obs["force_on_human"].reshape((6,)),
-            human_obs["human_joint_angles"],           
+            human_obs["force_on_human"].reshape((6,)),        
         ))
 
-        global_targets_uarm = self._map_cylinder_points_to_global(self.wiping_targets_uarm, pipeline_state.xmat[self.human_tuarm_idx], pipeline_state.xpos[self.human_tuarm_idx])
-        global_targets_larm = self._map_cylinder_points_to_global(self.wiping_targets_larm, pipeline_state.xmat[self.human_tlarm_idx], pipeline_state.xpos[self.human_tlarm_idx])
-
-        global_targets = jp.vstack((global_targets_uarm, global_targets_larm))
-        distances_all = self._target_distances(global_targets, pipeline_state.site_xpos[self.panda_wiper_center_idx])
         
-        old_contact_vector = state.info["contact_vector"]
-        distances = self._mask_contacts(distances_all, old_contact_vector)
-        new_contact_vector = self._update_contact_vector(distances, old_contact_vector, self.target_threshold, human_obs["force_on_human"])
-        
+        new_contact_vector = self._update_contact_vector(distances, contact_vector, self.target_threshold, human_obs["force_on_human"])
         contact_info = {"contact_vector": new_contact_vector}
 
         closest_distance = jp.min(distances)
         r_dist = jp.exp(-closest_distance**2/self._dist_scale)
 
         n_contacts = jp.count_nonzero(new_contact_vector==0)
-        n_old_contacts = jp.count_nonzero(old_contact_vector==0)
+        n_old_contacts = jp.count_nonzero(contact_vector==0)
         new_contacts = (n_contacts - n_old_contacts).astype(jp.float32)
 
         # TODO: Add human preference rewards
@@ -274,59 +311,67 @@ class BedBathing(PipelineEnv):
         )
         # return (robo_obs, human_obs)
 
-    def _get_robo_obs(self, pipeline_state: base.State) -> jax.Array:
+    def _get_robo_obs(self, pipeline_state: base.State, closest_target) -> jax.Array:
         """Returns the environment observations."""
-
+        # proprioception
+        robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
+        normalised_robo_joint_angles = (robo_joint_angles - self.robot_lower_joint_limits) / (self.robot_upper_joint_limits - self.robot_lower_joint_limits)
+        normalised_robo_joint_angles = 2 * normalised_robo_joint_angles - 1
+        robo_joint_vel = pipeline_state.qd[self.panda_joint_id_start:self.panda_joint_id_end]
         tool_position = pipeline_state.site_xpos[self.panda_wiper_center_idx]
         tool_orientation = pipeline_state.xquat[self.panda_wiper_body_idx]
-        
-        # TODO: adjust this so the ._get_force_on_tool takes 3 args
+
+        # tactile
         force_on_tool = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
-        robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
 
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
+        
+
+        # mask distances and get closest target  
+        wiper_target_dist = closest_target - tool_position
+        wiper_target_dist_euclidean = jp.linalg.norm(wiper_target_dist)
+
         return {
-            # "position": position,
-            # "velocity": velocity,
+            # proprioception
+            "robo_joint_angles": normalised_robo_joint_angles,
+            "robo_joint_vel": robo_joint_vel,
             "tool_position": tool_position,
             "tool_orientation": tool_orientation,
-            # "distance_to_target": distance_to_target,
-            # "target_pos": target_pos,
+            # # tactile
+            "force_on_tool": force_on_tool, 
             "human_uarm_pos": human_uarm_pos,
             "human_larm_pos": human_larm_pos,
-            "force_on_tool": force_on_tool,
-            # "force_on_human": force_on_,
-            "robo_joint_angles": robo_joint_angles  
+            "wiper_target_dist": wiper_target_dist,
+            "wiper_target_dist_euclidean": wiper_target_dist_euclidean  
+ 
         }
        
     
     def _get_human_obs(self, pipeline_state: base.State) -> jax.Array:
         """Returns the environment observations"""
-
-        tool_position = pipeline_state.site_xpos[self.panda_wiper_center_idx]
-        tool_orientation = pipeline_state.xquat[self.panda_wiper_body_idx]
-        
+        # proprioception
         human_joint_angles = pipeline_state.qpos[self.human_joint_id_start:self.human_joint_id_end]
+        normalised_human_joint_angles = (human_joint_angles - self.human_lower_joint_limits) / (self.human_upper_joint_limits - self.human_lower_joint_limits)
+        normalised_human_joint_angles = 2 * normalised_human_joint_angles - 1
+        human_joint_vel = pipeline_state.qd[self.human_joint_id_start:self.human_joint_id_end]
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
         force_on_human = self._get_force_on_tool(pipeline_state, self.UARM_TOOL_CONTACT_ID, self.LARM_TOOL_CONTACT_ID)
+        tool_position = pipeline_state.site_xpos[self.panda_wiper_center_idx]
+        tool_orientation = pipeline_state.xquat[self.panda_wiper_body_idx]
+
         return {
-            # "position": position,
-            # "velocity": velocity,
+            "human_joint_angles": normalised_human_joint_angles,
             "tool_position": tool_position,
             "tool_orientation": tool_orientation,
-            # "distance_to_target": distance_to_target,
-            "tool_orientation": tool_orientation,
-            # "target_pos": target_pos,
+            "human_joint_vel": human_joint_vel,
             "human_uarm_pos": human_uarm_pos,
             "human_larm_pos": human_larm_pos,
             "force_on_human": force_on_human,
-            # "force_on_target": force_on_target,
-            "human_joint_angles": human_joint_angles
-        }
+        } 
         #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
     
 
