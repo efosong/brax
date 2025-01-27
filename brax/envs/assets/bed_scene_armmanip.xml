@@ -147,7 +147,7 @@
       <include file="bed_assets/bed_bare.xml"/>
     </body>
     <body childclass="humanoid" name="humanoid_container" pos="1.00 0.00 0.9" euler="0 -1.5707963 0">
-      <include file="bed_assets/humanoid_bare.xml"/>
+      <include file="bed_assets/humanoid_bare_armmanip.xml"/>
       <freejoint/>
     </body>
     <body childclass="panda" name="panda_container" pos="-0.25 -0.9 0" euler="0 0 1.57">
