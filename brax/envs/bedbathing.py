@@ -85,11 +85,9 @@ class BedBathing(PipelineEnv):
         self.panda_wiper_body_idx = mj_name2id(mjmodel, BODY_IDX, "wiper")
 
         # self.targets is a fixed array containing the int ids of the target sites 
-        target_idxs = ["target", "target2", "target3"]
+        target_idxs = ["target_0", "target_1", "target_2", "target_3", "target_4"]
         self.n_targets = len(target_idxs)
-        self.targets = jp.zeros(self.n_targets, dtype=jp.int32)
-        for i, idx in enumerate(target_idxs):
-            self.targets.at[i].set(mj_name2id(mjmodel, SITE_IDX, idx))
+        self.targets = jp.array([mj_name2id(mjmodel, SITE_IDX, idx) for idx in target_idxs], dtype=jp.int32)
 
 
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
