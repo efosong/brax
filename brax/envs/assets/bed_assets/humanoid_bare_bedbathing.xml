@@ -42,19 +42,30 @@
     </body>
     <body name="right_upper_arm" pos="0 -0.17 0.06">
       <!-- <site name="target" type="sphere" size="0.04" rgba="0 1 0 1" pos = "0.1 0 0"/> -->
-      <site name="target" type="capsule" size="0.01" rgba="0 1 0 1" fromto="0 0 0 0 -0.05 0.05"/> 
+      <!-- <site name="target" type="capsule" size="0.01" rgba="0 1 0 1" fromto="0 0 0.03 0 0 0.04"/>  -->
+      <!-- <site name="target2" type="capsule" size="0.01" rgba="0 1 0 1" fromto="0 0 0 .16 -.16 -.16"/>  -->
+      <!-- <site name="target3" type="sphere" size="0.05" rgba="0 1 0 1" pos = ".14 -.14 -.14"/> 
+      <site name="target4" type="sphere" size="0.05" rgba="0 1 0 1" pos = ".1 -.1 -.1"/>  -->
+      <site name="target_0" type="sphere" size="0.01" rgba="0 1 0 1" pos = ".02 .02 .02"/> 
+      <site name="target_1" type="sphere" size="0.01" rgba="0 1 0 1" pos = "0.06148148 -0.01950617 -0.01950617"/> 
+      <site name="target_2" type="sphere" size="0.01" rgba="0 1 0 1" pos = "0.10296296 -0.05901235 -0.05901235"/> 
+      <site name="target_3" type="sphere" size="0.01" rgba="0 1 0 1" pos = "0.14444445 -0.09851852 -0.09851852"/> 
+      <site name="target_4" type="sphere" size="0.01" rgba="0 1 0 1" pos = "0.18592593 -0.13802469 -0.13802469"/> 
+
 
       <joint armature="0.0068" axis="2 1 1" name="right_shoulder1" pos="0 0 0" range="-1.483529 1.047197" stiffness="1" type="hinge"/>
       <joint armature="0.0051" axis="0 -1 1" name="right_shoulder2" pos="0 0 0" range="-1.483529 1.047197" stiffness="1" type="hinge"/>
       <geom fromto="0 0 0 .16 -.16 -.16" name="right_uarm" size="0.04 0.16" type="capsule"/>
+      
+
       <!-- <geom name = "target" pos = "0.1 -.1 -0.06" size = "0.01" rgba = "0 0 1 1"/> -->
       <body name="right_lower_arm" pos=".18 -.18 -.18">
-        <site name="target2" type="capsule" size="0.01" rgba="0 1 0 1" fromto="0 0 0 0 -0.05 0.05"/> 
+        <!-- <site name="target2" type="capsule" size="0.01" rgba="0 1 0 1" fromto="0 0 0 0.05 0.05 0.05"/>  -->
 
         <joint armature="0.0028" axis="0 -1 1" name="right_elbow" pos="0 0 0" range="-1.570795 0.872664" stiffness="0" type="hinge"/>
         <geom fromto="0.01 0.01 0.01 .17 .17 .17" name="right_larm" size="0.031" type="capsule"/>
         <geom name="right_hand" pos=".18 .18 .18" size="0.04" type="sphere"/>
-          <site name="target3" type="capsule" size="0.01" rgba="0 1 0 1" fromto=".18 .18 .18 .18 .18 .45"/>
+          <!-- <site name="target3" type="capsule" size="0.01" rgba="0 1 0 1" fromto=".18 .18 .18 .18 .18 .45"/> -->
 
         <camera pos="0 0 0"/>
 
