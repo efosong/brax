@@ -85,7 +85,9 @@ class BedBathing(PipelineEnv):
         self.panda_wiper_body_idx = mj_name2id(mjmodel, BODY_IDX, "wiper")
 
         # self.targets is a fixed array containing the int ids of the target sites 
-        target_idxs = ["target", "target2", "target3"]
+        # target_idxs = ["target", "target2", "target3"]
+        target_idxs = ["target_4"]
+
         self.n_targets = len(target_idxs)
         self.targets = jp.zeros(self.n_targets, dtype=jp.int32)
         for i, idx in enumerate(target_idxs):
@@ -233,25 +235,21 @@ class BedBathing(PipelineEnv):
         # jp.logical_and(below_threshold, non_zero_forces)
         # set contact from 1->0 
         made_contact = jp.where(distance_threshold, 1, 0)
-        move_index = made_contact.astype(np.int32)  # Changed to int32 for consistency
+        wiping_reward = made_contact.astype(jp.float32) # Specify reward as float32
+        move_index = made_contact.astype(np.int32)  # Specify index increment as int32 
 
         # Update target index in the state
         new_target_index = state.info["target_index"] + move_index
 
         # Ensure we don't exceed n_targets
-        # new_target_index = jp.minimum(new_target_index, self.n_targets)
-        
-        # Set done when we've contacted all targets
-        done = (new_target_index >= self.n_targets).astype(jp.float32)
-        # Update the state
-        # state.target_index = new_target_index
-        # state.done = done
-
+        new_target_index = jp.minimum(new_target_index, self.n_targets)
         info = {"target_index": new_target_index}
 
-        wiping_reward = made_contact.astype(jp.float32)
+        # Set done when we've contacted all targets
+        fake_done = (new_target_index >= self.n_targets).astype(jp.float32)
+        done = 0.0
         
-        # r_dist = jp.exp(-closest_distance**2/self._dist_scale)
+        # distance reward to current target
         self._dist_scale = 1
         r_dist = (1 - jp.tanh(dist / self._dist_scale))
 
@@ -272,7 +270,7 @@ class BedBathing(PipelineEnv):
             weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost,
             weighted_reward_wiping = self._wiping_reward_weight*wiping_reward,
             n_contacts = new_target_index.astype(jp.float32),
-            done = done
+            done = fake_done
         )
 
         return state.replace(
