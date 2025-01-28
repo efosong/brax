@@ -86,7 +86,7 @@ class BedBathing(PipelineEnv):
 
         # self.targets is a fixed array containing the int ids of the target sites 
         self.n_targets = 10
-        target_idxs = [f"target_{id}" for id in range(n_targets)]
+        target_idxs = [f"target_{id}" for id in range(self.n_targets)]
         self.targets = jp.array([mj_name2id(mjmodel, SITE_IDX, idx) for idx in target_idxs], dtype=jp.int32)
 
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
@@ -222,7 +222,7 @@ class BedBathing(PipelineEnv):
         ))
 
         dist = robo_obs["wiper_target_dist_euclidean"]
-        distance_threshold = dist < 0.03
+        distance_threshold = dist < 0.1
 
         contact_forces = robo_obs["force_on_tool"]
         non_zero_forces = jp.any(contact_forces != 0.0)
