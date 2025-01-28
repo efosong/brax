@@ -37,7 +37,7 @@ class BedBathing(PipelineEnv):
         wiping_reward_weight: float = 1.0,
         reset_noise_scale=5e-3,
         backend="mjx",
-        n_targets: int = 52,
+        n_targets: int = 0,
         target_threshold: float = 0.1,
         **kwargs
     ):
@@ -69,12 +69,10 @@ class BedBathing(PipelineEnv):
         ACTUATOR_IDX = mujoco.mjtObj.mjOBJ_ACTUATOR
         SITE_IDX = mujoco.mjtObj.mjOBJ_SITE
     
-        
         self.panda_actuators_ids = []
         self.humanoid_actuators_ids = []
 
         # TODO: Is this particioning of actuators useful in the training pipeline? 
-        
         for i in range(mjmodel.nu):
             actuator_name = mj_id2name(mjmodel, ACTUATOR_IDX, i)
             if actuator_name.startswith("actuator"):
@@ -82,10 +80,17 @@ class BedBathing(PipelineEnv):
             else:
                 self.humanoid_actuators_ids.append(i)
 
-
         self.panda_wiper_idx = mj_name2id(mjmodel, GEOM_IDX, "wiper_pad")
         self.panda_wiper_center_idx = mj_name2id(mjmodel, SITE_IDX, "wiper_centre")
         self.panda_wiper_body_idx = mj_name2id(mjmodel, BODY_IDX, "wiper")
+
+        # self.targets is a fixed array containing the int ids of the target sites 
+        target_idxs = ["target", "target2", "target3"]
+        self.n_targets = len(target_idxs)
+        self.targets = jp.zeros(self.n_targets, dtype=jp.int32)
+        for i, idx in enumerate(target_idxs):
+            self.targets.at[i].set(mj_name2id(mjmodel, SITE_IDX, idx))
+
 
         self.human_tuarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_upper_arm") # Right human arm tuarm = target arm upper arm
         self.human_tlarm_idx = mj_name2id(mjmodel, BODY_IDX, "right_lower_arm") # Right human arm tlarm = target arm lower arm
@@ -97,20 +102,18 @@ class BedBathing(PipelineEnv):
         self.human_larm_size = mjmodel.geom_size[self.human_tlarm_geom]
         
         # self.contact_force = jax.vmap(contact_force, in_axes=(None, 0, None, None))
-
         # self.TARGET_CONTACT_ID = 294
         
         # TODO: Update these indexes once XML is updated or write some sort of helper function to get these
         self.UARM_TOOL_CONTACT_ID = 58
-    
         self.LARM_TOOL_CONTACT_ID = 62
-
-        # TODO: Double check these or write a helper function to find these
-        self.panda_joint_id_start = 18
-        self.panda_joint_id_end = 24
-
-        self.human_joint_id_start = 1
-        self.human_joint_id_end = 18
+        
+        # we add 1 to ensure end index included
+        joint_names = [mjmodel.joint(i).name for i in range(mjmodel.njnt)]
+        self.human_joint_id_start = joint_names.index('abdomen_z')  # This should return 1
+        self.human_joint_id_end = joint_names.index('left_elbow') + 1  # This should return 17
+        self.panda_joint_id_start = joint_names.index('joint1')  # This should return 18
+        self.panda_joint_id_end = joint_names.index('joint7') + 1 # This should return 24
 
         # Retrieve joint limits
         self.upper_joint_limits = mjmodel.jnt_range[:, 0]
@@ -119,7 +122,6 @@ class BedBathing(PipelineEnv):
         self.robot_lower_joint_limits = self.lower_joint_limits[self.panda_joint_id_start:self.panda_joint_id_end]
         self.human_upper_joint_limits = self.upper_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
         self.human_lower_joint_limits = self.lower_joint_limits[self.human_joint_id_start:self.human_joint_id_end]
-
 
         n_frames = 4
         kwargs["n_frames"] = kwargs.get("n_frames", n_frames)
@@ -131,20 +133,10 @@ class BedBathing(PipelineEnv):
         self._wiping_reward_weight = wiping_reward_weight
         self._dist_scale = dist_scale
         self._reset_noise_scale = reset_noise_scale
-        # self.actuator_classes = self._get_actuator_classes(self.path)
-        # self.humanoid_actuators, self.panda_actuators = self._identify_actuators(self.actuator_classes)
 
-        # BedBathing specific indices
-        self.target_threshold = target_threshold
-        self.n_targets = n_targets
-        n_targets_per_arm = n_targets//2
-        self.wiping_targets_uarm = self._initialize_targets(n_targets_per_arm, mjmodel.geom_size[self.human_tuarm_geom][1], mjmodel.geom_size[self.human_tuarm_geom][0])
-        self.wiping_targets_larm = self._initialize_targets(n_targets_per_arm, mjmodel.geom_size[self.human_tlarm_geom][1], mjmodel.geom_size[self.human_tlarm_geom][0])
 
     def reset(self, rng: jax.Array) -> State:
-        """Resets the environment to an initial state."""
-        
-        contact_vector = jp.ones(self.n_targets)
+        """Resets the environment to an initial state."""       
 
         rng_pos, rng_vel = jax.random.split(rng, 2)
 
@@ -160,20 +152,15 @@ class BedBathing(PipelineEnv):
 
         # uarm_contact_id = contact_id(pipeline_state, self.human_tuarm_idx, self.panda_wiper_idx)
         # larm_contact_id = contact_id(pipeline_state, self.human_tlarm_idx, self.panda_wiper_idx)
-
         # self.LARM_TOOL_CONTACT_ID = jp.int32(larm_contact_id)
         # self.UARM_TOOL_CONTACT_ID = jp.int32(uarm_contact_id)
 
-        # contact_vector = state.info["contact_vector"]
-        closest_target, distances = self.get_targets(pipeline_state, contact_vector)
-
-        robo_obs = self._get_robo_obs(pipeline_state, closest_target)
+        target_index = 0
+        robo_obs = self._get_robo_obs(pipeline_state, target_index)    
         human_obs = self._get_human_obs(pipeline_state)
         #obs = jp.concatenate((robo_obs, human_obs))
         obs = jp.concatenate((
-             # robot obs length = 6 + 6 + 3 + 4 + 6 = 25
-            # robot obs length = 6 + 6 + 3 + 4 + 6 +6 = 31
-
+            # robot obs length = 7 + 7 + 3 + 4 + 6 + 6 + 4 = 37
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
             robo_obs["tool_position"],
@@ -183,8 +170,7 @@ class BedBathing(PipelineEnv):
             robo_obs["force_on_tool"].reshape((6,)),
             robo_obs["wiper_target_dist"].reshape((3,)),
             robo_obs["wiper_target_dist_euclidean"].reshape((1,)),  
-            # human = 17 + 17 + 3 + 3 = 40
-            # human = 17 + 17 + 3 + 3 = 53
+            # human = 17 + 17 + 7 + 6 + 6 = 53
             human_obs["human_joint_angles"],
             human_obs["human_joint_vel"],   
             human_obs["tool_position"],
@@ -202,58 +188,23 @@ class BedBathing(PipelineEnv):
             "weighted_reward_dist": zero,
             "weighted_reward_ctrl": zero,
             "weighted_reward_wiping": zero,
-            "contact_vector": jp.zeros(self.n_targets),
-            "distances": jp.zeros(self.n_targets),
-            "contacts_info": jp.zeros(self.n_targets)
+            "n_contacts": zero,
+            "done": zero
         }
-        info = {"contact_vector": contact_vector}
+        info = {"target_index": target_index}
         return State(pipeline_state, obs, reward, done, metrics, info)
     
-    def get_targets(self, pipeline_state, contact_vector):
-        # does this need to happen every step
-        global_targets_uarm = self._map_cylinder_points_to_global(self.wiping_targets_uarm, pipeline_state.xmat[self.human_tuarm_idx], pipeline_state.xpos[self.human_tuarm_idx])
-        global_targets_larm = self._map_cylinder_points_to_global(self.wiping_targets_larm, pipeline_state.xmat[self.human_tlarm_idx], pipeline_state.xpos[self.human_tlarm_idx])
-        global_targets = jp.vstack((global_targets_uarm, global_targets_larm))
-
-        distances_all = self._target_distances(global_targets, pipeline_state.site_xpos[self.panda_wiper_center_idx])
-        distances = self._mask_contacts(distances_all, contact_vector)
-
-        # get 3d distances
-        # panda_wiper = pipeline_state.site_xpos[self.panda_wiper_center_idx]
-        # all_distances = panda_wiper - global_targets
-        # all_distances_euclidean = jp.linalg.norm(all_distances)
-
-        # mask distances and get closest target
-        # masked_distances_euclidean = jp.where(contact_vector == 0, jp.inf, all_distances_euclidean)
-        closest_distance_idx = jp.argmin(distances)
-        closest_target = global_targets[closest_distance_idx]
-        return closest_target, distances
 
     def step(self, rng: jax.Array, state: State, action: jax.Array) -> State:
         """Runs one timestep of the environment's dynamics."""
         pipeline_state0 = state.pipeline_state
         assert pipeline_state0 is not None
         pipeline_state = self.pipeline_step(pipeline_state0, action)
-        
-        # global_targets_uarm = self._map_cylinder_points_to_global(self.wiping_targets_uarm, pipeline_state.xmat[self.human_tuarm_idx], pipeline_state.xpos[self.human_tuarm_idx])
-        # global_targets_larm = self._map_cylinder_points_to_global(self.wiping_targets_larm, pipeline_state.xmat[self.human_tlarm_idx], pipeline_state.xpos[self.human_tlarm_idx])
 
-        # global_targets = jp.vstack((global_targets_uarm, global_targets_larm))
-        # distances_all = self._target_distances(global_targets, pipeline_state.site_xpos[self.panda_wiper_center_idx])
-        # distances = self._mask_contacts(distances_all, self.contact_vector)
-
-        ctrl_cost = -jp.sum(jp.square(action))
-
-        # vector for which contacts have already been activated
-        contact_vector = state.info["contact_vector"]
-        closest_target, distances = self.get_targets(pipeline_state, contact_vector)
-
-        robo_obs = self._get_robo_obs(pipeline_state, closest_target)
-
-        
+        target_index = state.info["target_index"]
+        robo_obs = self._get_robo_obs(pipeline_state, target_index)        
         human_obs = self._get_human_obs(pipeline_state)
-        
-        # TODO: possibly replace uarm and larm positions with joint positions
+
         obs = jp.concatenate((
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
@@ -273,33 +224,55 @@ class BedBathing(PipelineEnv):
             human_obs["force_on_human"].reshape((6,)),        
         ))
 
+        dist = robo_obs["wiper_target_dist_euclidean"]
+        distance_threshold = dist < 0.1
+
+        contact_forces = robo_obs["force_on_tool"]
+        non_zero_forces = jp.any(contact_forces != 0.0)
+
+        # jp.logical_and(below_threshold, non_zero_forces)
+        # set contact from 1->0 
+        made_contact = jp.where(distance_threshold, 1, 0)
+        move_index = made_contact.astype(np.int32)  # Changed to int32 for consistency
+
+        # Update target index in the state
+        new_target_index = state.info["target_index"] + move_index
+
+        # Ensure we don't exceed n_targets
+        # new_target_index = jp.minimum(new_target_index, self.n_targets)
         
-        new_contact_vector = self._update_contact_vector(distances, contact_vector, self.target_threshold, human_obs["force_on_human"])
-        contact_info = {"contact_vector": new_contact_vector}
+        # Set done when we've contacted all targets
+        done = (new_target_index >= self.n_targets).astype(jp.float32)
+        # Update the state
+        # state.target_index = new_target_index
+        # state.done = done
 
-        closest_distance = jp.min(distances)
-        r_dist = jp.exp(-closest_distance**2/self._dist_scale)
+        info = {"target_index": new_target_index}
 
-        n_contacts = jp.count_nonzero(new_contact_vector==0)
-        n_old_contacts = jp.count_nonzero(contact_vector==0)
-        new_contacts = (n_contacts - n_old_contacts).astype(jp.float32)
+        wiping_reward = made_contact.astype(jp.float32)
+        
+        # r_dist = jp.exp(-closest_distance**2/self._dist_scale)
+        self._dist_scale = 1
+        r_dist = (1 - jp.tanh(dist / self._dist_scale))
 
         # TODO: Add human preference rewards
-        reward = self._dist_reward_weight*r_dist + self._ctrl_cost_weight*ctrl_cost + self._wiping_reward_weight*new_contacts
-        
-        done = jp.all(new_contact_vector == 0.0).astype(jp.float32)
-        
+        self._wiping_reward_weight = 100
+
+        # penalise joint velocities
+        ctrl_cost = -jp.sum(jp.square(robo_obs["robo_joint_vel"]))
+
+        reward = self._dist_reward_weight*r_dist + self._ctrl_cost_weight*ctrl_cost + self._wiping_reward_weight*wiping_reward
+                
         # also in resset
         state.metrics.update(
             reward_dist = r_dist,
             reward_ctrl = ctrl_cost,
-            reward_wiping = new_contacts,
+            reward_wiping = wiping_reward,
             weighted_reward_dist = self._dist_reward_weight*r_dist,
             weighted_reward_ctrl = self._ctrl_cost_weight*ctrl_cost,
-            weighted_reward_wiping = self._wiping_reward_weight*new_contacts,
-            contact_vector = new_contact_vector,
-            distances = distances,
-            contacts_info = state.info["contact_vector"],
+            weighted_reward_wiping = self._wiping_reward_weight*wiping_reward,
+            n_contacts = new_target_index.astype(jp.float32),
+            done = done
         )
 
         return state.replace(
@@ -307,11 +280,10 @@ class BedBathing(PipelineEnv):
             obs=obs,
             reward=reward,
             done=done,
-            info=state.info | contact_info,
+            info=state.info | info,
         )
-        # return (robo_obs, human_obs)
 
-    def _get_robo_obs(self, pipeline_state: base.State, closest_target) -> jax.Array:
+    def _get_robo_obs(self, pipeline_state: base.State, target_index) -> jax.Array:
         """Returns the environment observations."""
         # proprioception
         robo_joint_angles = pipeline_state.qpos[self.panda_joint_id_start:self.panda_joint_id_end]
@@ -327,10 +299,11 @@ class BedBathing(PipelineEnv):
         human_uarm_pos = pipeline_state.xpos[self.human_tuarm_idx]
         human_larm_pos = pipeline_state.xpos[self.human_tlarm_idx]
 
-        
+        # mask distances and get closest target 
+        next_target_idx = self.targets.at[target_index].get()
 
-        # mask distances and get closest target  
-        wiper_target_dist = closest_target - tool_position
+        next_target = pipeline_state.site_xpos[next_target_idx]
+        wiper_target_dist = next_target - tool_position
         wiper_target_dist_euclidean = jp.linalg.norm(wiper_target_dist)
 
         return {
@@ -339,16 +312,15 @@ class BedBathing(PipelineEnv):
             "robo_joint_vel": robo_joint_vel,
             "tool_position": tool_position,
             "tool_orientation": tool_orientation,
-            # # tactile
+            # tactile
             "force_on_tool": force_on_tool, 
+            # gt
             "human_uarm_pos": human_uarm_pos,
             "human_larm_pos": human_larm_pos,
             "wiper_target_dist": wiper_target_dist,
             "wiper_target_dist_euclidean": wiper_target_dist_euclidean  
- 
         }
        
-    
     def _get_human_obs(self, pipeline_state: base.State) -> jax.Array:
         """Returns the environment observations"""
         # proprioception
@@ -372,30 +344,6 @@ class BedBathing(PipelineEnv):
             "human_larm_pos": human_larm_pos,
             "force_on_human": force_on_human,
         } 
-        #return jp.concatenate((position, velocity, distance_to_target, tool_orientation, target_pos, human_uarm_pos, human_larm_pos))
-    
-
-    def _get_geom_pos(self, pipeline_state: base.State, geom_id: int) -> jax.Array:
-        """Returns the geoms and sizes of the environment"""
-
-        geom_xpos = pipeline_state.geom_xpos[geom_id]
-
-        return geom_xpos
-    
-    def _get_site_pos(self, pipeline_state: base.State, site_id: int) -> jax.Array:
-        """Returns the site position"""
-        site_xpos = pipeline_state.site_xpos[site_id]
-
-        return site_xpos
-    
-    def _check_distance(self, pipeline_state: base.State, site_id: int, geom2_id: int) -> jax.Array:
-        """Returns distance between a geom and a site"""
-        pos1 = self._get_site_pos(pipeline_state, site_id)
-        pos2 = self._get_geom_pos(pipeline_state, geom2_id)
-    
-        center_distance = jp.linalg.norm(pos1 - pos2, axis=-1)
-
-        return center_distance
     
     def _get_force_on_tool(self, pipeline_state, uarm_tool_id: int, larm_id:int) -> jax.Array:
         """Return the force on the tool"""
@@ -404,52 +352,4 @@ class BedBathing(PipelineEnv):
 
         return jp.sum(jp.vstack((tool_uarm, tool_larm)), axis=0)
     
-    def _initialize_targets(self, num_points: int, height: float, radius: float) -> jax.Array:
-        # Calculate angles for equally spaced points around the circumference
-        angles = jp.linspace(0, 2 * jp.pi, num_points, endpoint=False)
-        
-        # Calculate heights for equally spaced points along the height of the cylinder
-        heights = jp.linspace(-height, height, num_points)
-        
-        # Calculate the (x, y, z) coordinates for each point
-        x = radius * jp.cos(angles)
-        y = radius * jp.sin(angles)
-        z = heights
-        
-        # Stack the coordinates 
-        points = jp.stack((x, y, z), axis=-1)
-        
-        return points
-    
-    def _map_cylinder_points_to_global(self, points: jax.Array, rotation_matrix: jax.Array, global_position: jax.Array) -> jax.Array:
-        # Rotate the cylinder points using the rotation matrix
-        # TODO: check rotation matrix shape and see if we need .T
-        rotated_points = jp.dot(points, rotation_matrix.T)
-        # Translate the rotated points to their global position
-        global_points = rotated_points + global_position
-        return global_points
-    
-    def _target_distances(self, target_locations: jax.Array, point: jax.Array) -> jax.Array:
-        # Calculate the squared distances from the point to each target location
-        distances = jp.sqrt(jp.sum((target_locations - point) ** 2, axis=1))
-        return distances
-    
-        
-    def _mask_contacts(self, distances: jax.Array, contact_vector: jax.Array) -> jax.Array:
-        # Assign a very high value (e.g., jnp.inf) to distances corresponding to touched points
-        modified_distances = jp.where(contact_vector == 0, jp.inf, distances)
-        return modified_distances
-    
-    def _update_contact_vector(self, distances: jax.Array, contact_vector: jax.Array, threshold: float, contact_forces: jax.Array) -> jax.Array:
-            
-            below_threshold = distances < threshold
-    
-            non_zero_forces = jp.any(contact_forces != 0.0)
-
-            updated_contact_vector = jp.where(
-                jp.logical_and(below_threshold, non_zero_forces),
-                0,
-                contact_vector)
-            return updated_contact_vector
-        
-    
+  
