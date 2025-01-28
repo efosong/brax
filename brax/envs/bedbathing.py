@@ -249,7 +249,7 @@ class BedBathing(PipelineEnv):
         r_dist = (1 - jp.tanh(dist / self._dist_scale))
 
         # TODO: Add human preference rewards
-        self._wiping_reward_weight = 100
+        self._wiping_reward_weight = 1
 
         # penalise joint velocities
         ctrl_cost = -jp.sum(jp.square(robo_obs["robo_joint_vel"]))
