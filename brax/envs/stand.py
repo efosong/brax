@@ -84,28 +84,20 @@ class Stand(PipelineEnv):
 
         # we want the human waist position for rewards
         self.human_waist_geom_idx = (mj_name2id(mjmodel, GEOM_IDX, "lwaist"))
-
-        # for i in range(mjmodel.njnt):
-        #     joint_name = mjmodel.jnt[i]  # This depends on how `jnt` is stored in the `mjmodel`
-        #     print(f"Joint {i}: {joint_name}")
-
-        # # 0 is the ID type for joints
-        # for i in range(mjmodel.njnt):  # Loop through all joints
-        #     joint_name = mj_id2name(mjmodel, 0, i)  # Get the joint name directly
-        #     print(f"Joint {i}: {joint_name}")
-        #     # joint_name = mj_id2name(mjmodel, JOINT_TYPE, i)
-        #     print(joint_name)
-        #     if joint_name is not None:  # Make sure the joint has a name
-        #         if joint_name.startswith("robot"):  # Assuming robot joints start with "robot"
-        #             self.robot_joint_ids.append(i)
-        #         elif joint_name.startswith("humanoid"):  # Assuming humanoid joints start with "humanoid"
-        #             self.humanoid_joint_ids.append(i)
         
-        # how do i get this? print out joints I think 
-        self.human_joint_id_start = 1
-        self.human_joint_id_end = 18
-        self.robot_joint_id_start = 18
-        self.robot_joint_id_end = 24
+        # Get this from the mujoco viewer, count manually
+        num_head_joints = 3
+        num_torso_joints = 3
+        num_base_joints = 3
+        num_arm_joints = 7
+        self.num_robot_joints = num_head_joints + num_torso_joints + 2*num_arm_joints + num_base_joints
+
+        # we add 1 to ensure end index included
+        joint_names = [mjmodel.joint(i).name for i in range(mjmodel.njnt)]
+        self.human_joint_id_start = joint_names.index('abdomen_z')  # This should return 1
+        self.human_joint_id_end = joint_names.index('left_elbow') + 1  # This should return 17
+        self.panda_joint_id_start = joint_names.index('base_joint_trans_x')  # This should return 18
+        self.panda_joint_id_end = joint_names.index('head/joint_3') + 1 # This should return 24
 
         
         # Retrieve joint limits
@@ -151,9 +143,11 @@ class Stand(PipelineEnv):
         robo_obs = self._get_robo_obs(pipeline_state, info)
         human_obs = self._get_human_obs(pipeline_state, info)
         obs = jp.concatenate((
-            # robot obs length = 3 + 4 + 3 + 1 + 6 + 6 = 25
+            # 23 + 23 + 17 + 3 = 46 + 20 = 66
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
+            robo_obs["human_joint_angles"],  
+            robo_obs["human_waist_pos"],
             # human obs length = 17 + 17 + 3 = 37
             human_obs["human_joint_angles"],
             human_obs["human_joint_vel"],       
@@ -178,6 +172,8 @@ class Stand(PipelineEnv):
         obs = jp.concatenate((
             robo_obs["robo_joint_angles"],
             robo_obs["robo_joint_vel"],
+            robo_obs["human_joint_angles"],  
+            robo_obs["human_waist_pos"],
             human_obs["human_joint_angles"],  
             human_obs["human_joint_vel"],       
             human_obs["human_waist_pos"],      
@@ -193,7 +189,6 @@ class Stand(PipelineEnv):
         # ))
         # self.print_function("robot", robo_obs_length.size)
         # self.print_function("human", human_obs_length.size)
-
 
         human_waist_height = human_obs["human_waist_pos"][2]
         standing_reward = human_waist_height
@@ -227,10 +222,15 @@ class Stand(PipelineEnv):
         robo_joint_vel = pipeline_state.qd[self.robot_joint_id_start:self.robot_joint_id_end]
         # TODO: normalise joint velocities?
 
+        # robot needs to know human pos in order to move
+        human_waist_pos = pipeline_state.xpos[self.human_waist_geom_idx]      
+        human_joint_angles = pipeline_state.qpos[self.human_joint_id_start:self.human_joint_id_end]
+
         return {
-            # proprioception
             "robo_joint_angles": robo_joint_angles,
-            "robo_joint_vel": robo_joint_vel,        
+            "robo_joint_vel": robo_joint_vel,
+            "human_joint_angles": human_joint_angles,
+            "human_waist_pos": human_waist_pos        
         }
     
 

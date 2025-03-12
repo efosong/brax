@@ -31,9 +31,8 @@ from jax import numpy as jp
 
 # _EXPECTED_SPS = {"spring": {"ant": 1000, "humanoid": 1000}}
 # _EXPECTED_SPS = {"mjx": {"bedbathing": 1000}}
-_EXPECTED_SPS = {"mjx": {"scratchitch": 10}}
 
-_EXPECTED_SPS = {"mjx": {"scratchitch": 1000}}
+_EXPECTED_SPS = {"mjx": {"stand": 1000}}
 BATCH_SIZES = [64,128,256]
 
 # _EXPECTED_SPS = {"mjx": {"shadow": 1000}}
