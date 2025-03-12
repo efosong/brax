@@ -133,9 +133,9 @@
           <body name="base_link" pos="0 0 0" childclass="torobo2">
             <inertial pos="-0.0231104 0.00158473 0.188355" quat="-0.0157449 0.686078 -0.018153 0.727131" mass="56.049" diaginertia="1.87057 1.70163 1.51139"/>
             <geom class="visual" type="mesh" mesh="base_link" material="219,219,219"/>
-            <geom class="collision" type="mesh" mesh="base_link_collision"/>
+            <geom class="collision" type="capsule" size="0.25" fromto="0 -0.2 0.25 0.0 0.2 0.25"/>
             <geom class="visual" pos="0 0 0.34" type="mesh" mesh="torso_link0" material="219,219,219"/>
-            <geom class="collision" pos="0 0 0.34" type="mesh" mesh="torso_link0_collision"/>
+            <!-- <geom class="collision" type="capsule" size="0.1" fromto="0 -0.0 0 0.0 0.5 0"/> -->
             <body name="torso/link_1" pos="0 0 0.425" quat="0.5 -0.5 -0.5 -0.5">
               <inertial pos="0.213191 -0.019853 -0.001309" quat="0.00960405 0.690592 -0.00415758 0.723169" mass="11.5246" diaginertia="0.313471 0.30707 0.0289366"/>
               <joint name="torso/joint_1" pos="0 0 0" axis="0 0 1" range="-0.959931 0.610865"/>
@@ -150,7 +150,7 @@
                   <inertial pos="-0.0127522 0.00183622 0.30238" quat="0.999869 0.00116029 0.0160629 0.00154784" mass="10.0047" diaginertia="0.166033 0.150799 0.0601367"/>
                   <joint name="torso/joint_3" pos="0 0 0" axis="0 0 1" range="-2.0944 2.0944"/>
                   <geom class="visual" type="mesh" mesh="torso_link3" material="219,219,219"/>
-                  <geom class="collision" type="capsule" size="0.1" fromto="0 0 0.15 0. 0. 0.35"/>
+                  <geom class="collision" type="capsule" size="0.15" fromto="0 0 0.15 0. 0. 0.35"/>
                   <geom class="visual" pos="0 0.03465 0.3416" quat="0.5 0.5 0.5 -0.5" type="mesh" mesh="left_arm_link0" material="219,219,219"/>
                   <!-- <geom class="collision" pos="0 0.03465 0.3416" quat="0.5 0.5 0.5 -0.5" type="mesh" mesh="left_arm_link0_collision"/> -->
                   <geom class="visual" pos="0 -0.03465 0.3416" quat="0.5 0.5 0.5 -0.5" type="mesh" mesh="right_arm_link0" material="219,219,219"/>
@@ -248,18 +248,18 @@
                     <inertial pos="-0.012467 -0.004271 -0.021697" quat="0.683565 -0.0689821 -0.121402 0.716409" mass="0.581793" diaginertia="0.00103142 0.000928712 0.000277733"/>
                     <joint name="head/joint_1" pos="0 0 0" axis="0 0 1" range="-2.96706 2.96706"/>
                     <geom class="visual" type="mesh" mesh="head_link1" material="72,71,61"/>
-                    <geom class="collision" type="mesh" mesh="head_link1_collision"/>
+                    <!-- <geom class="collision" type="capsule" size="0.1" fromto="0 -0.0 0 0.0 0.5 0"/> -->
                     <body name="head/link_2" pos="-0.02 0 0" quat="0.5 -0.5 -0.5 -0.5">
                       <inertial pos="0.028956 -0.032951 0.000172" quat="0.661731 0.647513 0.279151 0.25478" mass="0.321723" diaginertia="0.000479673 0.000405915 0.000249251"/>
                       <joint name="head/joint_2" pos="0 0 0" axis="0 0 1" range="-0.872665 1.0472"/>
                       <geom class="visual" type="mesh" mesh="head_link2" material="219,219,219"/>
-                      <geom class="collision" type="mesh" mesh="head_link2_collision"/>
+                      <!-- <geom class="collision" type="capsule" size="0.1" fromto="0 -0.0 0 0.0 0.5 0"/> -->
                       <body name="head/link_3" pos="0.041 0 0" quat="0.707107 -0.707107 0 0">
                         <inertial pos="0.097293 0.000224 0.034755" quat="0.981108 0.000352451 0.193328 -0.00720088" mass="1.38491" diaginertia="0.00840426 0.00768934 0.00440097"/>
                         <joint name="head/joint_3" pos="0 0 0" axis="0 0 1" range="-0.872665 0.872665"/>
                         <geom class="visual" type="mesh" mesh="head_link3_0" material="72,71,61" />
                         <geom class="visual" type="mesh" mesh="head_link3_1" material="210,210,210" />
-                        <geom class="collision" type="mesh" mesh="head_link3_collision"/>
+                        <geom class="collision" type="capsule" size="0.12" fromto="0.05 -0.1 0 0.05 0.1 0"/>
                       </body>
                     </body>
                   </body>
