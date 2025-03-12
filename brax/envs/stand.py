@@ -62,8 +62,8 @@ class Stand(PipelineEnv):
                 {
                     "opt.solver": mujoco.mjtSolver.mjSOL_NEWTON, # Try mjSOL_CG for better stability
                     "opt.disableflags": mujoco.mjtDisableBit.mjDSBL_EULERDAMP,
-                    "opt.iterations": 1,  # max number of iterations for main solver, O(n)
-                    "opt.ls_iterations": 1, # helps with stability, O(iterations x ls_iterations)
+                    "opt.iterations": 4,  # max number of iterations for main solver, O(n)
+                    "opt.ls_iterations": 4, # helps with stability, O(iterations x ls_iterations)
                     "opt.timestep": 0.001
                 }
             )
@@ -96,8 +96,8 @@ class Stand(PipelineEnv):
         joint_names = [mjmodel.joint(i).name for i in range(mjmodel.njnt)]
         self.human_joint_id_start = joint_names.index('abdomen_z')  # This should return 1
         self.human_joint_id_end = joint_names.index('left_elbow') + 1  # This should return 17
-        self.panda_joint_id_start = joint_names.index('base_joint_trans_x')  # This should return 18
-        self.panda_joint_id_end = joint_names.index('head/joint_3') + 1 # This should return 24
+        self.robot_joint_id_start = joint_names.index('base_joint_trans_x')  # This should return 18
+        self.robot_joint_id_end = joint_names.index('head/joint_3') + 1 # This should return 24
 
         
         # Retrieve joint limits
